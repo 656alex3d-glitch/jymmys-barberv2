@@ -1,0 +1,2355 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jymmy's Barber - Agenda de Citas & Sistema</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Google Fonts: Orbitron & Poppins -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            barber: {
+              red: '#ff1744',
+              blue: '#00e5ff',
+              navy: '#00264d',
+              gold: '#ffd700',
+              neonPink: '#ff007f',
+              neonGreen: '#00ff88',
+              dark: '#0a0a0e',
+              card: '#12121a',
+              cardBorder: '#232336'
+            }
+          },
+          fontFamily: {
+            orbitron: ['Orbitron', 'sans-serif'],
+            poppins: ['Poppins', 'sans-serif']
+          },
+          boxShadow: {
+            'neon-cyan': '0 0 15px rgba(0, 229, 255, 0.4), 0 0 30px rgba(0, 229, 255, 0.2)',
+            'neon-red': '0 0 15px rgba(255, 23, 68, 0.4), 0 0 30px rgba(255, 23, 68, 0.2)',
+            'neon-gold': '0 0 15px rgba(255, 215, 0, 0.4), 0 0 30px rgba(255, 215, 0, 0.2)',
+            'neon-pink': '0 0 15px rgba(255, 0, 127, 0.4), 0 0 30px rgba(255, 0, 127, 0.2)',
+            'neon-green': '0 0 15px rgba(0, 255, 136, 0.4), 0 0 30px rgba(0, 255, 136, 0.2)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Efecto Barber Pole Clásico con Neón */
+    @keyframes barberStripes {
+      0% { background-position: 0 0; }
+      100% { background-position: 40px 0; }
+    }
+
+    .barber-pole-stripes {
+      background: repeating-linear-gradient(
+        -45deg,
+        #ff1744,
+        #ff1744 12px,
+        #ffffff 12px,
+        #ffffff 24px,
+        #00e5ff 24px,
+        #00e5ff 36px,
+        #ffffff 36px,
+        #ffffff 48px
+      );
+      background-size: 56px 56px;
+      animation: barberStripes 2s linear infinite;
+    }
+
+    .neon-text-cyan {
+      color: #00e5ff;
+      text-shadow: 0 0 8px rgba(0, 229, 255, 0.8), 0 0 20px rgba(0, 229, 255, 0.5);
+    }
+    .neon-text-red {
+      color: #ff1744;
+      text-shadow: 0 0 8px rgba(255, 23, 68, 0.8), 0 0 20px rgba(255, 23, 68, 0.5);
+    }
+    .neon-text-gold {
+      color: #ffd700;
+      text-shadow: 0 0 8px rgba(255, 215, 0, 0.8), 0 0 20px rgba(255, 215, 0, 0.5);
+    }
+
+    /* Estilo de ticket de impresión térmico */
+    @media print {
+      body * {
+        visibility: hidden !important;
+      }
+      #ticket-modal, #ticket-modal * {
+        visibility: visible !important;
+      }
+      #ticket-modal {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background: white !important;
+        color: black !important;
+        display: flex;
+        justify-content: center;
+        align-items: flex-start;
+        padding-top: 15px;
+        z-index: 999999;
+      }
+      #printable-ticket {
+        box-shadow: none !important;
+        border: 1px dashed #333 !important;
+        width: 80mm !important;
+        max-width: 80mm !important;
+        color: #000 !important;
+        background: #fff !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0a0a0e;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #28283d;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #00e5ff;
+    }
+  </style>
+</head>
+<body class="bg-barber-dark text-gray-200 font-poppins min-h-screen flex flex-col selection:bg-barber-blue selection:text-black">
+
+  <!-- BARRA SUPERIOR ANIMADA TIPO BARBER POLE -->
+  <div class="h-2 w-full barber-pole-stripes shadow-lg shadow-cyan-500/20"></div>
+
+  <!-- NAVBAR LIMPIO PARA CLIENTES -->
+  <header class="bg-barber-card/90 backdrop-blur-md border-b border-barber-cardBorder sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+      
+      <!-- LOGO JYMMY'S BARBER -->
+      <div class="flex items-center space-x-3 cursor-pointer select-none" onclick="app.showTab('citas')">
+        <div class="relative w-12 h-12 rounded-xl bg-black border-2 border-barber-blue flex items-center justify-center shadow-neon-cyan overflow-hidden group">
+          <div class="absolute inset-0 barber-pole-stripes opacity-30 group-hover:opacity-50 transition-opacity"></div>
+          <i data-lucide="scissors" class="w-7 h-7 text-white relative z-10 transform -rotate-45 group-hover:scale-110 transition-transform"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-1.5">
+            <span class="font-orbitron font-black text-2xl tracking-wider text-white">JYMMY'S</span>
+            <span class="font-orbitron font-extrabold text-2xl neon-text-red">BARBER</span>
+          </div>
+          <p class="text-xs text-barber-blue/90 font-medium tracking-widest uppercase flex items-center gap-1">
+            <span class="inline-block w-2 h-2 rounded-full bg-barber-green animate-pulse"></span>
+            Agenda de Citas Online
+          </p>
+        </div>
+      </div>
+
+      <!-- BOTONES DE NAVEGACIÓN (BLOQUEADOS Y OCULTOS PARA CLIENTES POR DEFECTO) -->
+      <nav id="staff-nav-tabs" class="hidden md:flex items-center space-x-2">
+        <button onclick="app.showTab('citas')" id="nav-btn-citas" class="nav-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 border border-transparent">
+          <i data-lucide="calendar" class="w-4 h-4 text-barber-blue"></i>
+          <span>Agendar Cita</span>
+        </button>
+
+        <button onclick="app.showTab('pos')" id="nav-btn-pos" class="nav-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 border border-transparent">
+          <i data-lucide="shopping-cart" class="w-4 h-4 text-barber-gold"></i>
+          <span>Punto de Venta</span>
+        </button>
+
+        <button onclick="app.showTab('admin')" id="nav-btn-admin" class="nav-tab-btn hidden px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 border border-transparent">
+          <i data-lucide="shield-check" class="w-4 h-4 text-barber-red"></i>
+          <span>Panel Admin</span>
+          <span id="badge-citas-pendientes" class="hidden text-xs bg-barber-red text-white px-2 py-0.5 rounded-full font-bold">0</span>
+        </button>
+      </nav>
+
+      <!-- CONTROL DE SONIDO & BOTÓN DE ACCESO PRIVADO (PERSONAL / ADMIN) -->
+      <div class="flex items-center space-x-3">
+        <!-- Toggle Sonido -->
+        <button onclick="audioManager.toggleSound()" id="sound-btn" class="p-2.5 rounded-xl bg-barber-cardBorder/60 hover:bg-barber-cardBorder border border-gray-700 hover:border-barber-blue transition-all text-barber-blue hover:shadow-neon-cyan" title="Activar/Desactivar Sonidos">
+          <i data-lucide="volume-2" id="sound-icon" class="w-5 h-5"></i>
+        </button>
+
+        <!-- Botón Discreto para Acceso del Personal o Administrador -->
+        <button onclick="app.abrirModalLogin()" id="auth-main-btn" class="px-3.5 py-2 rounded-xl text-xs font-semibold font-orbitron tracking-wider transition-all flex items-center gap-2 border border-barber-cardBorder bg-black/50 hover:border-barber-blue hover:text-white text-gray-400">
+          <i data-lucide="lock" class="w-3.5 h-3.5 text-barber-blue"></i>
+          <span id="auth-main-btn-text">ACCESO STAFF</span>
+        </button>
+
+        <!-- Botón Logout (aparece cuando está logueado) -->
+        <button onclick="app.cerrarSesion()" id="logout-btn" class="hidden p-2.5 rounded-xl bg-red-950/60 border border-red-700/60 text-red-400 hover:text-white hover:bg-red-900 transition-all" title="Cerrar Sesión">
+          <i data-lucide="log-out" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- NAVEGACIÓN MÓVIL EN PANTALLAS PEQUEÑAS (SOLO CUANDO ESTÁ AUTORIZADO) -->
+    <div id="mobile-nav-bar" class="hidden border-t border-barber-cardBorder bg-black/60 px-2 py-2 justify-around text-xs">
+      <button onclick="app.showTab('citas')" class="p-2 flex flex-col items-center text-barber-blue font-semibold">
+        <i data-lucide="calendar" class="w-5 h-5 mb-1"></i> Agendar
+      </button>
+      <button onclick="app.showTab('pos')" id="mobile-btn-pos" class="p-2 flex flex-col items-center text-barber-gold font-semibold">
+        <i data-lucide="shopping-cart" class="w-5 h-5 mb-1"></i> Punto de Venta
+      </button>
+      <button onclick="app.showTab('admin')" id="mobile-btn-admin" class="hidden p-2 flex flex-col items-center text-barber-red font-semibold">
+        <i data-lucide="shield-check" class="w-5 h-5 mb-1"></i> Admin
+      </button>
+    </div>
+  </header>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+
+    <!-- ========================================== -->
+    <!-- TAB 1: AGENDAR CITAS (PÚBLICA PARA CLIENTES)-->
+    <!-- ========================================== -->
+    <section id="tab-citas" class="tab-content transition-opacity duration-300">
+      
+      <!-- HERO BANNER -->
+      <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-barber-card via-black to-barber-card border border-barber-cardBorder p-6 sm:p-10 mb-8 shadow-2xl">
+        <div class="absolute -right-16 -top-16 w-64 h-64 bg-barber-blue/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -left-16 -bottom-16 w-64 h-64 bg-barber-red/10 rounded-full blur-3xl pointer-events-none"></div>
+        
+        <div class="relative z-10 max-w-2xl">
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-barber-red/20 border border-barber-red/40 text-barber-red text-xs font-semibold uppercase tracking-wider mb-3">
+            <i data-lucide="flame" class="w-3.5 h-3.5"></i> Citas Online & Atención VIP
+          </div>
+          <h1 class="font-orbitron font-black text-3xl sm:text-4xl text-white tracking-wide mb-3">
+            RESERVA TU CORTE EN <span class="neon-text-cyan">JYMMY'S</span> <span class="neon-text-red">BARBER</span>
+          </h1>
+          <p class="text-gray-400 text-sm sm:text-base leading-relaxed">
+            Elige a tu barbero, el servicio de tu agrado y el horario que mejor te convenga. Tu lugar queda apartado al instante.
+          </p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- FORMULARIO DE AGENDAMIENTO (2 COLUMNAS) -->
+        <div class="lg:col-span-2 space-y-6">
+          
+          <!-- PASO 1: SELECCIONA BARBERO -->
+          <div class="bg-barber-card border border-barber-cardBorder rounded-2xl p-6 shadow-lg">
+            <h2 class="font-orbitron font-bold text-lg text-white mb-4 flex items-center gap-2">
+              <span class="w-7 h-7 rounded-lg bg-barber-blue/20 text-barber-blue flex items-center justify-center font-black text-sm border border-barber-blue/40">1</span>
+              Selecciona tu Barbero
+            </h2>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4" id="barberos-container">
+              <!-- Barberos generados dinámicamente -->
+            </div>
+          </div>
+
+          <!-- PASO 2: SELECCIONA SERVICIO (CON PRECIOS DEFINIDOS POR EL ADMIN) -->
+          <div class="bg-barber-card border border-barber-cardBorder rounded-2xl p-6 shadow-lg">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="font-orbitron font-bold text-lg text-white flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-barber-red/20 text-barber-red flex items-center justify-center font-black text-sm border border-barber-red/40">2</span>
+                Elige el Servicio
+              </h2>
+              <span class="text-[11px] text-gray-500 font-mono">Precios oficiales actualizados</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="servicios-citas-container">
+              <!-- Servicios generados dinámicamente -->
+            </div>
+          </div>
+
+          <!-- PASO 3: FECHA Y HORARIO -->
+          <div class="bg-barber-card border border-barber-cardBorder rounded-2xl p-6 shadow-lg">
+            <h2 class="font-orbitron font-bold text-lg text-white mb-4 flex items-center gap-2">
+              <span class="w-7 h-7 rounded-lg bg-barber-gold/20 text-barber-gold flex items-center justify-center font-black text-sm border border-barber-gold/40">3</span>
+              Fecha & Horario
+            </h2>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+              <div>
+                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Fecha de la Cita</label>
+                <input type="date" id="cita-fecha" class="w-full bg-black/60 border border-barber-cardBorder focus:border-barber-blue rounded-xl p-3 text-white outline-none transition-all">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Turno de Barbería</label>
+                <div class="flex items-center h-12 text-xs text-gray-400 px-3 bg-black/40 rounded-xl border border-gray-800">
+                  <i data-lucide="clock" class="w-4 h-4 text-barber-green mr-2"></i>
+                  Lunes a Sábado: 9:00 AM - 8:00 PM
+                </div>
+              </div>
+            </div>
+
+            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Horarios Disponibles</label>
+            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2" id="horarios-container">
+              <!-- Horas generadas dinámicamente -->
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RESUMEN DE LA CITA & DATOS CLIENTE (1 COLUMNA) -->
+        <div class="lg:col-span-1">
+          <div class="bg-barber-card border-2 border-barber-cardBorder rounded-2xl p-6 shadow-2xl sticky top-28">
+            <div class="flex items-center justify-between pb-4 border-b border-barber-cardBorder">
+              <h3 class="font-orbitron font-bold text-lg text-white">Resumen de Cita</h3>
+              <div class="w-3 h-3 rounded-full bg-barber-blue animate-ping"></div>
+            </div>
+
+            <!-- Detalles en vivo -->
+            <div class="py-4 space-y-3 text-sm border-b border-barber-cardBorder">
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400 flex items-center gap-1.5"><i data-lucide="user-check" class="w-4 h-4 text-barber-blue"></i> Barbero:</span>
+                <span id="resumen-barbero" class="font-semibold text-white">Sin seleccionar</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400 flex items-center gap-1.5"><i data-lucide="scissors" class="w-4 h-4 text-barber-red"></i> Servicio:</span>
+                <span id="resumen-servicio" class="font-semibold text-white">Sin seleccionar</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400 flex items-center gap-1.5"><i data-lucide="calendar-days" class="w-4 h-4 text-barber-gold"></i> Fecha:</span>
+                <span id="resumen-fecha" class="font-semibold text-white">Hoy</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span class="text-gray-400 flex items-center gap-1.5"><i data-lucide="clock" class="w-4 h-4 text-barber-green"></i> Hora:</span>
+                <span id="resumen-hora" class="font-semibold text-barber-green">Sin seleccionar</span>
+              </div>
+              <div class="flex justify-between items-center pt-2">
+                <span class="text-gray-400 font-bold uppercase text-xs">Total:</span>
+                <span id="resumen-precio" class="font-orbitron text-xl font-black text-barber-gold">$0.00</span>
+              </div>
+            </div>
+
+            <!-- Formulario de Contacto -->
+            <form id="form-agendar-cita" onsubmit="app.guardarCita(event)" class="mt-4 space-y-3">
+              <div>
+                <label class="block text-xs font-semibold text-gray-400 mb-1">Nombre Completo *</label>
+                <div class="relative">
+                  <i data-lucide="user" class="w-4 h-4 absolute left-3 top-3.5 text-gray-500"></i>
+                  <input type="text" id="cliente-nombre" required placeholder="Ej: Roberto Pérez" class="w-full bg-black/60 border border-barber-cardBorder focus:border-barber-blue rounded-xl pl-9 pr-3 py-2.5 text-white text-sm outline-none transition-all">
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-gray-400 mb-1">Teléfono / WhatsApp *</label>
+                <div class="relative">
+                  <i data-lucide="phone" class="w-4 h-4 absolute left-3 top-3.5 text-gray-500"></i>
+                  <input type="tel" id="cliente-telefono" required placeholder="Ej: 55 1234 5678" class="w-full bg-black/60 border border-barber-cardBorder focus:border-barber-blue rounded-xl pl-9 pr-3 py-2.5 text-white text-sm outline-none transition-all">
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-gray-400 mb-1">Notas especiales (opcional)</label>
+                <textarea id="cliente-notas" rows="2" placeholder="Ej: Degradado bajo con navaja, perfilado de barba..." class="w-full bg-black/60 border border-barber-cardBorder focus:border-barber-blue rounded-xl p-2.5 text-white text-xs outline-none transition-all resize-none"></textarea>
+              </div>
+
+              <!-- BOTÓN CONFIRMAR CON EFECTO NEÓN & SONIDO -->
+              <button type="submit" class="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-barber-blue via-blue-600 to-barber-red hover:from-cyan-400 hover:to-red-500 text-black font-orbitron font-black text-sm tracking-wider uppercase transition-all transform hover:-translate-y-0.5 active:translate-y-0 shadow-neon-cyan flex items-center justify-center gap-2">
+                <i data-lucide="check-circle-2" class="w-5 h-5 text-black"></i>
+                <span>Confirmar & Agendar Cita</span>
+              </button>
+            </form>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 2: PUNTO DE VENTA (POS - BLOQUEADO)    -->
+    <!-- ========================================== -->
+    <section id="tab-pos" class="tab-content hidden transition-opacity duration-300">
+      
+      <!-- ENCABEZADO POS CON INDICADOR DEL DÍA -->
+      <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6 bg-barber-card border border-barber-cardBorder p-5 rounded-2xl">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-3 h-3 rounded-full bg-barber-gold animate-pulse"></span>
+            <h2 class="font-orbitron font-black text-2xl text-white">TERMINAL DE PUNTO DE VENTA</h2>
+          </div>
+          <p class="text-xs text-gray-400">Cobro rápido para barberos y personal. Emisión de ticket térmico.</p>
+        </div>
+
+        <!-- TOTAL DEL DÍA EN EL POS -->
+        <div class="bg-black/60 border border-barber-cardBorder px-5 py-3 rounded-xl flex items-center gap-4">
+          <div class="w-10 h-10 rounded-lg bg-barber-gold/20 flex items-center justify-center text-barber-gold border border-barber-gold/40">
+            <i data-lucide="badge-dollar-sign" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <span class="text-xs uppercase text-gray-400 font-bold block">Ventas de Hoy</span>
+            <span id="pos-total-dia" class="font-orbitron font-black text-xl text-barber-gold">$0.00</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- CATÁLOGO DE SERVICIOS Y PRODUCTOS (2 COLUMNAS) -->
+        <div class="lg:col-span-2 space-y-6">
+          
+          <!-- FILTRO DE CATEGORÍAS -->
+          <div class="flex space-x-2 border-b border-barber-cardBorder pb-2">
+            <button onclick="app.setCategoriaPOS('todos')" id="cat-btn-todos" class="px-4 py-2 rounded-xl text-xs font-bold transition-all bg-barber-blue text-black">Todos</button>
+            <button onclick="app.setCategoriaPOS('servicios')" id="cat-btn-servicios" class="px-4 py-2 rounded-xl text-xs font-bold transition-all bg-barber-cardBorder text-gray-300 hover:text-white">Servicios</button>
+            <button onclick="app.setCategoriaPOS('productos')" id="cat-btn-productos" class="px-4 py-2 rounded-xl text-xs font-bold transition-all bg-barber-cardBorder text-gray-300 hover:text-white">Productos</button>
+          </div>
+
+          <!-- GRID DE ÍTEMS -->
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-4" id="pos-items-grid">
+            <!-- Cargados dinámicamente -->
+          </div>
+        </div>
+
+        <!-- CARRITO DE COBRO Y EMISIÓN DE TICKET (1 COLUMNA) -->
+        <div class="lg:col-span-1">
+          <div class="bg-barber-card border-2 border-barber-cardBorder rounded-2xl p-5 shadow-2xl sticky top-28 flex flex-col h-[640px]">
+            
+            <div class="flex items-center justify-between pb-3 border-b border-barber-cardBorder">
+              <h3 class="font-orbitron font-bold text-white flex items-center gap-2">
+                <i data-lucide="receipt" class="w-5 h-5 text-barber-gold"></i> Ticket de Venta
+              </h3>
+              <button onclick="app.limpiarCarritoPOS()" class="text-xs text-barber-red hover:underline font-semibold">Vaciar</button>
+            </div>
+
+            <!-- Datos rápidos del cliente opcionales -->
+            <div class="py-2.5">
+              <input type="text" id="pos-cliente-nombre" placeholder="Nombre cliente (opcional)" class="w-full bg-black/60 border border-barber-cardBorder rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-barber-blue">
+            </div>
+
+            <!-- LISTA DE ÍTEMS EN EL CARRITO -->
+            <div class="flex-grow overflow-y-auto space-y-2 pr-1 my-2" id="pos-cart-items">
+              <div class="text-center py-12 text-gray-500 text-xs">
+                <i data-lucide="shopping-bag" class="w-10 h-10 mx-auto mb-2 opacity-30"></i>
+                Agrega servicios o productos para cobrar
+              </div>
+            </div>
+
+            <!-- SELECCIÓN MÉTODO DE PAGO Y CÁLCULO DE CAMBIO -->
+            <div class="border-t border-barber-cardBorder pt-3 space-y-2">
+              <div class="flex justify-between items-center text-xs text-gray-400">
+                <span>Subtotal:</span>
+                <span id="pos-subtotal" class="font-semibold text-white">$0.00</span>
+              </div>
+              <div class="flex justify-between items-center text-sm font-bold">
+                <span class="text-gray-300">TOTAL A PAGAR:</span>
+                <span id="pos-total" class="font-orbitron text-2xl text-barber-gold font-black">$0.00</span>
+              </div>
+
+              <!-- Método de Pago -->
+              <div class="pt-2">
+                <label class="block text-xs font-semibold text-gray-400 mb-1">Método de Pago:</label>
+                <div class="grid grid-cols-3 gap-1.5">
+                  <button type="button" onclick="app.setMetodoPago('efectivo')" id="metodo-efectivo" class="metodo-btn py-1.5 rounded-lg text-xs font-semibold border border-barber-green bg-barber-green/20 text-barber-green flex items-center justify-center gap-1">
+                    <i data-lucide="banknote" class="w-3.5 h-3.5"></i> Efectivo
+                  </button>
+                  <button type="button" onclick="app.setMetodoPago('tarjeta')" id="metodo-tarjeta" class="metodo-btn py-1.5 rounded-lg text-xs font-semibold border border-gray-700 bg-black/40 text-gray-400 flex items-center justify-center gap-1">
+                    <i data-lucide="credit-card" class="w-3.5 h-3.5"></i> Tarjeta
+                  </button>
+                  <button type="button" onclick="app.setMetodoPago('transferencia')" id="metodo-transferencia" class="metodo-btn py-1.5 rounded-lg text-xs font-semibold border border-gray-700 bg-black/40 text-gray-400 flex items-center justify-center gap-1">
+                    <i data-lucide="qr-code" class="w-3.5 h-3.5"></i> Transfer
+                  </button>
+                </div>
+              </div>
+
+              <!-- Paga con / Cambio (Solo Efectivo) -->
+              <div id="contenedor-cambio" class="grid grid-cols-2 gap-2 pt-1">
+                <div>
+                  <label class="block text-[11px] text-gray-400">Paga con ($):</label>
+                  <input type="number" id="pos-paga-con" oninput="app.calcularCambio()" placeholder="0.00" class="w-full bg-black/60 border border-barber-cardBorder focus:border-barber-green rounded-lg px-2.5 py-1 text-xs text-white">
+                </div>
+                <div>
+                  <label class="block text-[11px] text-gray-400">Cambio ($):</label>
+                  <input type="text" id="pos-cambio" readonly value="$0.00" class="w-full bg-black/80 border border-barber-cardBorder rounded-lg px-2.5 py-1 text-xs text-barber-green font-bold">
+                </div>
+              </div>
+
+              <!-- BOTÓN COBRAR Y GENERAR TICKET CON SONIDO CHA-CHING -->
+              <button onclick="app.procesarVentaPOS()" class="w-full py-3 rounded-xl bg-gradient-to-r from-barber-gold to-yellow-500 hover:from-yellow-400 hover:to-yellow-600 text-black font-orbitron font-black text-sm tracking-wider uppercase transition-all shadow-neon-gold flex items-center justify-center gap-2 mt-2">
+                <i data-lucide="printer" class="w-5 h-5"></i>
+                <span>Cobrar & Imprimir Ticket</span>
+              </button>
+
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 3: PANEL ADMINISTRADOR MAESTRO        -->
+    <!-- ========================================== -->
+    <section id="tab-admin" class="tab-content hidden transition-opacity duration-300">
+      
+      <!-- DASHBOARD ADMIN COMPLETO -->
+      <div id="admin-view-logged-in" class="space-y-8">
+        
+        <!-- BIENVENIDA & ACCIONES RÁPIDAS -->
+        <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-barber-card border border-barber-cardBorder p-6 rounded-2xl">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-barber-red/20 border border-barber-red flex items-center justify-center text-barber-red">
+              <i data-lucide="crown" class="w-7 h-7"></i>
+            </div>
+            <div>
+              <h2 class="font-orbitron font-black text-2xl text-white">PANEL ADMINISTRADOR</h2>
+              <p class="text-xs text-barber-green font-semibold flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-barber-green animate-pulse"></span>
+                Control Total de Precios, Contraseñas y Ventas
+              </p>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button onclick="app.generarCorteCaja()" class="px-4 py-2.5 rounded-xl bg-barber-gold/20 hover:bg-barber-gold/30 text-barber-gold border border-barber-gold/40 text-xs font-bold font-orbitron flex items-center gap-2 shadow-neon-gold">
+              <i data-lucide="file-text" class="w-4 h-4"></i>
+              <span>Corte de Caja Diario</span>
+            </button>
+
+            <button onclick="app.cerrarSesion()" class="px-4 py-2.5 rounded-xl bg-barber-cardBorder hover:bg-red-950 text-gray-300 hover:text-barber-red border border-gray-700 hover:border-barber-red text-xs font-bold transition-all flex items-center gap-2">
+              <i data-lucide="log-out" class="w-4 h-4"></i>
+              <span>Salir del Sistema</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- TARJETAS DE MÉTRICAS DIARIAS -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          <div class="bg-barber-card border border-barber-cardBorder p-5 rounded-2xl relative overflow-hidden">
+            <div class="flex justify-between items-start mb-3">
+              <span class="text-xs uppercase font-bold text-gray-400">Total Vendido Hoy</span>
+              <div class="p-2 rounded-lg bg-barber-gold/20 text-barber-gold border border-barber-gold/40">
+                <i data-lucide="dollar-sign" class="w-5 h-5"></i>
+              </div>
+            </div>
+            <div id="stat-ventas-hoy" class="font-orbitron font-black text-2xl sm:text-3xl text-barber-gold">$0.00</div>
+            <p class="text-[11px] text-gray-400 mt-2 flex items-center gap-1">
+              <i data-lucide="trending-up" class="w-3.5 h-3.5 text-barber-green"></i> Ingresos en tiempo real
+            </p>
+          </div>
+
+          <div class="bg-barber-card border border-barber-cardBorder p-5 rounded-2xl relative overflow-hidden">
+            <div class="flex justify-between items-start mb-3">
+              <span class="text-xs uppercase font-bold text-gray-400">Citas Agendadas Hoy</span>
+              <div class="p-2 rounded-lg bg-barber-blue/20 text-barber-blue border border-barber-blue/40">
+                <i data-lucide="calendar" class="w-5 h-5"></i>
+              </div>
+            </div>
+            <div id="stat-citas-hoy" class="font-orbitron font-black text-2xl sm:text-3xl text-barber-blue">0</div>
+            <p class="text-[11px] text-gray-400 mt-2 flex items-center gap-1">
+              <i data-lucide="check" class="w-3.5 h-3.5 text-barber-blue"></i> Programadas por clientes
+            </p>
+          </div>
+
+          <div class="bg-barber-card border border-barber-cardBorder p-5 rounded-2xl relative overflow-hidden">
+            <div class="flex justify-between items-start mb-3">
+              <span class="text-xs uppercase font-bold text-gray-400">Ventas Registradas</span>
+              <div class="p-2 rounded-lg bg-barber-green/20 text-barber-green border border-barber-green/40">
+                <i data-lucide="shopping-cart" class="w-5 h-5"></i>
+              </div>
+            </div>
+            <div id="stat-tickets-hoy" class="font-orbitron font-black text-2xl sm:text-3xl text-barber-green">0</div>
+            <p class="text-[11px] text-gray-400 mt-2 flex items-center gap-1">
+              <i data-lucide="receipt" class="w-3.5 h-3.5 text-barber-green"></i> Tickets emitidos
+            </p>
+          </div>
+
+          <div class="bg-barber-card border border-barber-cardBorder p-5 rounded-2xl relative overflow-hidden">
+            <div class="flex justify-between items-start mb-3">
+              <span class="text-xs uppercase font-bold text-gray-400">Efectivo en Caja</span>
+              <div class="p-2 rounded-lg bg-barber-red/20 text-barber-red border border-barber-red/40">
+                <i data-lucide="wallet" class="w-5 h-5"></i>
+              </div>
+            </div>
+            <div id="stat-efectivo-hoy" class="font-orbitron font-black text-2xl sm:text-3xl text-barber-red">$0.00</div>
+            <p class="text-[11px] text-gray-400 mt-2 flex items-center gap-1">
+              <i data-lucide="banknote" class="w-3.5 h-3.5 text-barber-red"></i> Dinero físico
+            </p>
+          </div>
+
+        </div>
+
+        <!-- SECCIÓN 1: GESTOR DE PRECIOS Y SERVICIOS (SOLICITADO POR EL CLIENTE) -->
+        <div class="bg-barber-card border-2 border-barber-gold/40 rounded-2xl p-6 shadow-xl">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+            <div>
+              <h3 class="font-orbitron font-bold text-lg text-white flex items-center gap-2">
+                <i data-lucide="tag" class="w-5 h-5 text-barber-gold"></i>
+                Gestor de Precios, Servicios & Productos
+              </h3>
+              <p class="text-xs text-gray-400">Modifica los precios o agrega nuevos servicios. Se reflejan inmediatamente en la agenda y en el POS.</p>
+            </div>
+            <button onclick="app.abrirModalNuevoItem()" class="px-4 py-2 rounded-xl bg-barber-gold text-black font-orbitron font-bold text-xs flex items-center gap-1.5 hover:bg-yellow-400 shadow-neon-gold">
+              <i data-lucide="plus-circle" class="w-4 h-4"></i> Agregar Servicio / Producto
+            </button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-black/40 text-xs uppercase text-gray-400 border-b border-barber-cardBorder font-semibold">
+                <tr>
+                  <th class="p-3">Nombre</th>
+                  <th class="p-3">Tipo</th>
+                  <th class="p-3">Detalle / Duración</th>
+                  <th class="p-3">Precio Actual ($)</th>
+                  <th class="p-3 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="admin-catalogo-tbody" class="divide-y divide-barber-cardBorder">
+                <!-- Ítems del catálogo generados dinámicamente -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 2: GESTOR DE CONTRASEÑAS (SOLICITADO POR EL CLIENTE) -->
+        <div class="bg-barber-card border border-barber-cardBorder rounded-2xl p-6 shadow-xl">
+          <div class="mb-4">
+            <h3 class="font-orbitron font-bold text-lg text-white flex items-center gap-2">
+              <i data-lucide="key-round" class="w-5 h-5 text-barber-red"></i>
+              Cambio de Contraseñas del Sistema
+            </h3>
+            <p class="text-xs text-gray-400">Solo tú como Administrador puedes cambiar estas claves de acceso.</p>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            
+            <!-- CONTRASEÑA ADMIN -->
+            <form onsubmit="app.cambiarPassAdmin(event)" class="bg-black/40 border border-gray-800 p-5 rounded-xl space-y-3">
+              <div class="flex items-center gap-2 font-bold text-white text-sm">
+                <i data-lucide="shield-check" class="w-4 h-4 text-barber-red"></i>
+                Contraseña Administrador Maestro (admin)
+              </div>
+              <div>
+                <label class="block text-xs text-gray-400 mb-1">Nueva Contraseña:</label>
+                <input type="password" id="nueva-pass-admin" required minlength="4" placeholder="••••••••" class="w-full bg-black/60 border border-barber-cardBorder rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-barber-red">
+              </div>
+              <button type="submit" class="w-full py-2 rounded-lg bg-barber-red hover:bg-red-600 text-white font-orbitron font-bold text-xs uppercase tracking-wider transition-all">
+                Guardar Contraseña Admin
+              </button>
+            </form>
+
+            <!-- CONTRASEÑA TRABAJADORES (PUNTO DE VENTA) -->
+            <form onsubmit="app.cambiarPassStaff(event)" class="bg-black/40 border border-gray-800 p-5 rounded-xl space-y-3">
+              <div class="flex items-center gap-2 font-bold text-white text-sm">
+                <i data-lucide="users" class="w-4 h-4 text-barber-gold"></i>
+                Contraseña Trabajadores / POS (<span class="text-barber-blue">Jymmys</span>)
+              </div>
+              <div>
+                <label class="block text-xs text-gray-400 mb-1">Nueva Contraseña para Trabajadores:</label>
+                <input type="password" id="nueva-pass-staff" required minlength="4" placeholder="••••••••" class="w-full bg-black/60 border border-barber-cardBorder rounded-lg px-3 py-2 text-white text-xs outline-none focus:border-barber-gold">
+              </div>
+              <button type="submit" class="w-full py-2 rounded-lg bg-barber-gold hover:bg-yellow-400 text-black font-orbitron font-bold text-xs uppercase tracking-wider transition-all">
+                Guardar Contraseña Trabajadores
+              </button>
+            </form>
+
+          </div>
+        </div>
+
+        <!-- SECCIÓN 3: TABLA DE CITAS AGENDADAS -->
+        <div class="bg-barber-card border border-barber-cardBorder rounded-2xl p-6 shadow-xl">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+            <div>
+              <h3 class="font-orbitron font-bold text-lg text-white flex items-center gap-2">
+                <i data-lucide="calendar-clock" class="w-5 h-5 text-barber-blue"></i>
+                Citas y Agenda de Clientes
+              </h3>
+              <p class="text-xs text-gray-400">Revisa las citas agendadas por los clientes o cobralas directamente</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <input type="date" id="admin-filtro-fecha" onchange="app.renderCitasAdmin()" class="bg-black/60 border border-barber-cardBorder rounded-xl px-3 py-1.5 text-xs text-white outline-none">
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-black/40 text-xs uppercase text-gray-400 border-b border-barber-cardBorder font-semibold">
+                <tr>
+                  <th class="p-3">Hora / Fecha</th>
+                  <th class="p-3">Cliente</th>
+                  <th class="p-3">Barbero</th>
+                  <th class="p-3">Servicio</th>
+                  <th class="p-3">Total</th>
+                  <th class="p-3">Estado</th>
+                  <th class="p-3 text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="admin-citas-tbody" class="divide-y divide-barber-cardBorder">
+                <!-- Filas de citas generadas dinámicamente -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- SECCIÓN 4: HISTORIAL DE VENTAS DEL DÍA -->
+        <div class="bg-barber-card border border-barber-cardBorder rounded-2xl p-6 shadow-xl">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+            <div>
+              <h3 class="font-orbitron font-bold text-lg text-white flex items-center gap-2">
+                <i data-lucide="receipt" class="w-5 h-5 text-barber-gold"></i>
+                Historial de Ventas & Tickets Emitidos
+              </h3>
+              <p class="text-xs text-gray-400">Todo lo que se vende durante la jornada</p>
+            </div>
+            <button onclick="app.exportarVentasCSV()" class="px-3 py-1.5 rounded-lg bg-barber-cardBorder hover:bg-gray-700 text-xs font-semibold flex items-center gap-1.5 text-gray-200">
+              <i data-lucide="download" class="w-3.5 h-3.5"></i> Exportar CSV
+            </button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+              <thead class="bg-black/40 text-xs uppercase text-gray-400 border-b border-barber-cardBorder font-semibold">
+                <tr>
+                  <th class="p-3">Folio</th>
+                  <th class="p-3">Hora</th>
+                  <th class="p-3">Cliente</th>
+                  <th class="p-3">Artículos / Servicios</th>
+                  <th class="p-3">Método</th>
+                  <th class="p-3">Total</th>
+                  <th class="p-3 text-right">Ticket</th>
+                </tr>
+              </thead>
+              <tbody id="admin-ventas-tbody" class="divide-y divide-barber-cardBorder">
+                <!-- Ventas del día -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- MODAL: LOGIN UNIFICADO (TRABAJADOR / ADMIN)-->
+  <!-- ========================================== -->
+  <div id="login-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-barber-card border-2 border-barber-blue/50 rounded-3xl max-w-sm w-full p-6 shadow-neon-cyan relative">
+      
+      <button onclick="app.cerrarModalLogin()" class="absolute top-4 right-4 text-gray-500 hover:text-white">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="text-center mb-6">
+        <div class="w-14 h-14 rounded-2xl bg-black border-2 border-barber-blue flex items-center justify-center text-barber-blue mx-auto mb-3 shadow-neon-cyan">
+          <i data-lucide="lock" class="w-7 h-7"></i>
+        </div>
+        <h3 class="font-orbitron font-black text-xl text-white">ACCESO AUTORIZADO</h3>
+        <p class="text-xs text-gray-400 mt-1">Ingresa como trabajador (POS) o administrador maestro.</p>
+      </div>
+
+      <form onsubmit="app.procesarLogin(event)" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 mb-1">Usuario</label>
+          <div class="relative">
+            <i data-lucide="user" class="w-4 h-4 absolute left-3 top-3 text-gray-500"></i>
+            <input type="text" id="login-user" required placeholder="admin o Jymmys" class="w-full bg-black/60 border border-barber-cardBorder focus:border-barber-blue rounded-xl pl-9 pr-3 py-2.5 text-white text-xs outline-none">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 mb-1">Contraseña</label>
+          <div class="relative">
+            <i data-lucide="key" class="w-4 h-4 absolute left-3 top-3 text-gray-500"></i>
+            <input type="password" id="login-pass" required placeholder="••••••••" class="w-full bg-black/60 border border-barber-cardBorder focus:border-barber-blue rounded-xl pl-9 pr-3 py-2.5 text-white text-xs outline-none">
+          </div>
+        </div>
+
+        <div class="p-3 rounded-xl bg-black/40 border border-gray-800 text-[11px] text-gray-400 space-y-1">
+          <div>• <b>Trabajador (POS)</b>: Usuario <span class="text-barber-blue">Jymmys</span></div>
+          <div>• <b>Admin Maestro</b>: Usuario <span class="text-barber-red">admin</span></div>
+        </div>
+
+        <button type="submit" class="w-full py-3 rounded-xl bg-gradient-to-r from-barber-blue to-blue-700 hover:from-cyan-400 hover:to-blue-600 text-black font-orbitron font-bold text-xs tracking-wider uppercase transition-all shadow-neon-cyan flex items-center justify-center gap-2">
+          <i data-lucide="unlock" class="w-4 h-4"></i>
+          <span>Ingresar al Sistema</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: AGREGAR / EDITAR PRECIO O SERVICIO -->
+  <!-- ========================================== -->
+  <div id="item-modal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-barber-card border-2 border-barber-gold rounded-3xl max-w-md w-full p-6 shadow-neon-gold relative">
+      
+      <button onclick="document.getElementById('item-modal').classList.add('hidden')" class="absolute top-4 right-4 text-gray-500 hover:text-white">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <h3 class="font-orbitron font-black text-xl text-white mb-1">GESTIONAR SERVICIO / PRODUCTO</h3>
+      <p class="text-xs text-gray-400 mb-4">Define el nombre y el precio oficial.</p>
+
+      <form onsubmit="app.guardarItemCatalogo(event)" class="space-y-3">
+        <input type="hidden" id="item-id">
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 mb-1">Nombre</label>
+          <input type="text" id="item-nombre" required placeholder="Ej: Corte Degrade con Tinte" class="w-full bg-black/60 border border-barber-cardBorder focus:border-barber-gold rounded-xl px-3 py-2 text-white text-xs outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1">Tipo</label>
+            <select id="item-categoria" class="w-full bg-black/60 border border-barber-cardBorder focus:border-barber-gold rounded-xl px-3 py-2 text-white text-xs outline-none">
+              <option value="servicios">Servicio (Corte/Barba)</option>
+              <option value="productos">Producto (Venta)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-1">Precio ($)</label>
+            <input type="number" step="0.5" id="item-precio" required placeholder="15.00" class="w-full bg-black/60 border border-barber-cardBorder focus:border-barber-gold rounded-xl px-3 py-2 text-white text-xs outline-none font-bold text-barber-gold">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 mb-1">Duración / Detalle</label>
+          <input type="text" id="item-duracion" placeholder="Ej: 35 min ó Frasco 100ml" class="w-full bg-black/60 border border-barber-cardBorder focus:border-barber-gold rounded-xl px-3 py-2 text-white text-xs outline-none">
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-400 mb-1">Descripción Breve</label>
+          <textarea id="item-desc" rows="2" placeholder="Detalle del servicio..." class="w-full bg-black/60 border border-barber-cardBorder focus:border-barber-gold rounded-xl p-2 text-white text-xs outline-none resize-none"></textarea>
+        </div>
+
+        <button type="submit" class="w-full py-2.5 rounded-xl bg-barber-gold hover:bg-yellow-400 text-black font-orbitron font-black text-xs uppercase tracking-wider transition-all mt-2">
+          Guardar Cambios
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: TICKET DE VENTA CON LOGO           -->
+  <!-- ========================================== -->
+  <div id="ticket-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white text-black font-mono rounded-xl p-6 max-w-sm w-full shadow-2xl relative border-2 border-dashed border-gray-400 text-xs" id="printable-ticket">
+      
+      <!-- CERRAR MODAL -->
+      <button onclick="app.cerrarTicket()" class="no-print absolute top-3 right-3 text-gray-500 hover:text-black">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <!-- CABECERA TICKET -->
+      <div class="text-center pb-4 border-b border-dashed border-gray-400">
+        <div class="font-orbitron font-black text-xl tracking-wider text-black">JYMMY'S BARBER</div>
+        <p class="text-[10px] uppercase tracking-widest text-gray-600 font-bold">BARBERÍA TRADICIONAL & MODERNA</p>
+        <p class="text-[10px] text-gray-500 mt-1">Av. Principal #100, Zona Centro</p>
+        <p class="text-[10px] text-gray-500">Tel / WhatsApp: +52 55 9876 5432</p>
+        <div class="text-[10px] mt-2 inline-block px-2 py-0.5 bg-gray-200 font-bold rounded">TICKET DE VENTA</div>
+      </div>
+
+      <!-- DATOS VENTA -->
+      <div class="py-3 border-b border-dashed border-gray-400 space-y-1 text-[11px]">
+        <div class="flex justify-between">
+          <span>FOLIO:</span>
+          <span id="ticket-folio" class="font-bold">#JB-0001</span>
+        </div>
+        <div class="flex justify-between">
+          <span>FECHA:</span>
+          <span id="ticket-fecha">2026-11-21</span>
+        </div>
+        <div class="flex justify-between">
+          <span>HORA:</span>
+          <span id="ticket-hora">14:35</span>
+        </div>
+        <div class="flex justify-between">
+          <span>CLIENTE:</span>
+          <span id="ticket-cliente" class="font-semibold">Consumidor Final</span>
+        </div>
+        <div class="flex justify-between">
+          <span>MÉTODO DE PAGO:</span>
+          <span id="ticket-metodo" class="font-bold uppercase">EFECTIVO</span>
+        </div>
+      </div>
+
+      <!-- DETALLE DE ARTÍCULOS -->
+      <div class="py-3 border-b border-dashed border-gray-400">
+        <div class="grid grid-cols-12 font-bold mb-2 text-[10px] uppercase text-gray-600">
+          <span class="col-span-2">Cant</span>
+          <span class="col-span-6">Concepto</span>
+          <span class="col-span-4 text-right">Importe</span>
+        </div>
+        <div id="ticket-items" class="space-y-1.5 text-[11px]">
+          <!-- Items del ticket -->
+        </div>
+      </div>
+
+      <!-- TOTALES -->
+      <div class="py-3 border-b border-dashed border-gray-400 space-y-1.5 text-[11px]">
+        <div class="flex justify-between">
+          <span>SUBTOTAL:</span>
+          <span id="ticket-subtotal">$0.00</span>
+        </div>
+        <div class="flex justify-between text-sm font-black">
+          <span>TOTAL PAGADO:</span>
+          <span id="ticket-total">$0.00</span>
+        </div>
+        <div class="flex justify-between text-gray-600" id="ticket-row-paga">
+          <span>PAGÓ CON:</span>
+          <span id="ticket-paga">$0.00</span>
+        </div>
+        <div class="flex justify-between text-gray-600 font-bold" id="ticket-row-cambio">
+          <span>SU CAMBIO:</span>
+          <span id="ticket-cambio">$0.00</span>
+        </div>
+      </div>
+
+      <!-- PIE DEL TICKET -->
+      <div class="text-center pt-4 space-y-1">
+        <p class="font-bold text-xs">¡GRACIAS POR TU PREFERENCIA!</p>
+        <p class="text-[10px] text-gray-500">"El estilo define al caballero"</p>
+        <div class="pt-2 text-[10px] text-gray-400 font-mono tracking-widest">
+          |||||| | |||||||||| |||||||| ||||
+        </div>
+      </div>
+
+      <!-- BOTONES DE ACCIÓN (NO IMPRIMIBLES) -->
+      <div class="no-print mt-5 pt-3 border-t border-gray-300 flex space-x-2">
+        <button onclick="window.print()" class="flex-1 py-2 rounded-lg bg-black text-white font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-gray-800">
+          <i data-lucide="printer" class="w-4 h-4"></i> Imprimir
+        </button>
+        <button onclick="app.cerrarTicket()" class="flex-1 py-2 rounded-lg bg-gray-200 text-black font-bold text-xs hover:bg-gray-300">
+          Cerrar
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: NOTIFICACIÓN AUTOMÁTICA AL ADMIN   -->
+  <!-- ========================================== -->
+  <div id="admin-welcome-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-barber-card border-2 border-barber-gold rounded-2xl max-w-md w-full p-6 shadow-neon-gold text-center">
+      <div class="w-14 h-14 rounded-2xl bg-barber-gold/20 border border-barber-gold flex items-center justify-center text-barber-gold mx-auto mb-3">
+        <i data-lucide="badge-percent" class="w-8 h-8"></i>
+      </div>
+      <h3 class="font-orbitron font-black text-xl text-white">REPORTE AL ENTRAR: ADMIN</h3>
+      <p class="text-xs text-gray-400 mt-1">Aquí está lo que se ha vendido hasta este momento:</p>
+
+      <div class="my-5 p-4 rounded-xl bg-black/60 border border-barber-cardBorder space-y-3 text-left text-sm">
+        <div class="flex justify-between items-center">
+          <span class="text-gray-400">Total Vendido Hoy:</span>
+          <span id="modal-reporte-total" class="font-orbitron font-black text-xl text-barber-gold">$0.00</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-gray-400">Tickets Realizados:</span>
+          <span id="modal-reporte-tickets" class="font-bold text-white">0</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-gray-400">Citas Pendientes Hoy:</span>
+          <span id="modal-reporte-citas" class="font-bold text-barber-blue">0</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-gray-400">Dinero en Efectivo:</span>
+          <span id="modal-reporte-efectivo" class="font-bold text-barber-green">$0.00</span>
+        </div>
+      </div>
+
+      <button onclick="document.getElementById('admin-welcome-modal').classList.add('hidden')" class="w-full py-2.5 rounded-xl bg-barber-gold hover:bg-yellow-400 text-black font-orbitron font-black text-xs uppercase tracking-wider">
+        Entendido, Ir al Panel
+      </button>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICACIONES -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+  <!-- PIE DE PÁGINA DISCRETO CON ENLACE PARA EL PERSONAL -->
+  <footer class="bg-black border-t border-barber-cardBorder py-6 mt-12">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-gray-500">
+      <div class="flex items-center space-x-2">
+        <span class="font-orbitron font-bold text-white">JYMMY'S BARBER</span>
+        <span>• Agenda de Citas Online</span>
+      </div>
+      <div class="flex items-center space-x-4">
+        <span>Cortes • Barbas • Estilo</span>
+        <span>•</span>
+        <button onclick="app.abrirModalLogin()" class="text-gray-400 hover:text-barber-blue flex items-center gap-1 transition-colors">
+          <i data-lucide="lock" class="w-3 h-3"></i> Acceso Personal / POS
+        </button>
+      </div>
+    </div>
+  </footer>
+
+  <!-- ========================================== -->
+  <!-- SISTEMA DE AUDIO (WEB AUDIO API SINTETIZADOR) -->
+  <!-- ========================================== -->
+  <script>
+    class AudioManager {
+      constructor() {
+        this.enabled = true;
+        this.ctx = null;
+      }
+
+      initContext() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      toggleSound() {
+        this.enabled = !this.enabled;
+        const icon = document.getElementById('sound-icon');
+        const btn = document.getElementById('sound-btn');
+        if (this.enabled) {
+          icon.setAttribute('data-lucide', 'volume-2');
+          btn.classList.remove('opacity-50');
+          this.playClick();
+          app.mostrarToast("Sonidos activados", "success");
+        } else {
+          icon.setAttribute('data-lucide', 'volume-x');
+          btn.classList.add('opacity-50');
+          app.mostrarToast("Sonidos silenciados", "info");
+        }
+        lucide.createIcons();
+      }
+
+      // Sonido de tijeras de barbería (snip - snip)
+      playScissors() {
+        if (!this.enabled) return;
+        this.initContext();
+        const now = this.ctx.currentTime;
+
+        [0, 0.15].forEach(timeOffset => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const filter = this.ctx.createBiquadFilter();
+
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(3200, now + timeOffset);
+          osc.frequency.exponentialRampToValueAtTime(800, now + timeOffset + 0.08);
+
+          filter.type = 'highpass';
+          filter.frequency.setValueAtTime(1200, now + timeOffset);
+
+          gain.gain.setValueAtTime(0.001, now + timeOffset);
+          gain.gain.linearRampToValueAtTime(0.2, now + timeOffset + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + timeOffset + 0.08);
+
+          osc.connect(filter);
+          filter.connect(gain);
+          gain.connect(this.ctx.destination);
+
+          osc.start(now + timeOffset);
+          osc.stop(now + timeOffset + 0.09);
+        });
+      }
+
+      // Sonido de Caja Registradora (Cha-Ching!)
+      playChaChing() {
+        if (!this.enabled) return;
+        this.initContext();
+        const now = this.ctx.currentTime;
+
+        const freqs = [1567.98, 2093.00, 3135.96]; // G6, C7, G7
+        freqs.forEach(freq => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now);
+
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.9);
+        });
+
+        const oscDrawer = this.ctx.createOscillator();
+        const gainDrawer = this.ctx.createGain();
+        oscDrawer.type = 'sawtooth';
+        oscDrawer.frequency.setValueAtTime(140, now);
+        oscDrawer.frequency.linearRampToValueAtTime(80, now + 0.2);
+
+        gainDrawer.gain.setValueAtTime(0.1, now);
+        gainDrawer.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+        oscDrawer.connect(gainDrawer);
+        gainDrawer.connect(this.ctx.destination);
+        oscDrawer.start(now);
+        oscDrawer.stop(now + 0.26);
+      }
+
+      // Sonido de confirmación elegante
+      playSuccess() {
+        if (!this.enabled) return;
+        this.initContext();
+        const now = this.ctx.currentTime;
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+
+          gain.gain.setValueAtTime(0.001, now + idx * 0.09);
+          gain.gain.linearRampToValueAtTime(0.15, now + idx * 0.09 + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + idx * 0.09 + 0.4);
+
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now + idx * 0.09);
+          osc.stop(now + idx * 0.09 + 0.45);
+        });
+      }
+
+      playClick() {
+        if (!this.enabled) return;
+        this.initContext();
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(600, now);
+        osc.frequency.exponentialRampToValueAtTime(200, now + 0.04);
+
+        gain.gain.setValueAtTime(0.05, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.05);
+      }
+    }
+
+    const audioManager = new AudioManager();
+  </script>
+
+  <!-- ========================================== -->
+  <!-- LÓGICA DE LA APLICACIÓN (JAVASCRIPT)       -->
+  <!-- ========================================== -->
+  <script>
+    const INITIAL_BARBEROS = [
+      { id: 'jymmy', nombre: 'Jymmy Master', especialidad: 'Fade & Degradados Top', avatar: '✂️', fotoColor: 'from-amber-600 to-yellow-500' },
+      { id: 'carlos', nombre: 'Carlos Fade', especialidad: 'Barbas Deluxe & Navaja', avatar: '💈', fotoColor: 'from-blue-600 to-cyan-500' },
+      { id: 'alex', nombre: 'Alex Scissors', especialidad: 'Estilos Clásicos & Tintes', avatar: '🪒', fotoColor: 'from-red-600 to-rose-500' }
+    ];
+
+    const DEFAULT_CATALOGO = [
+      { id: 'corte-fade', categoria: 'servicios', nombre: 'Corte Degradado / Fade', precio: 15.00, duracion: '35 min', desc: 'Desvanecido a navaja o shaver con acabado impecable.' },
+      { id: 'corte-barba', categoria: 'servicios', nombre: 'Combo Corte + Barba Deluxe', precio: 25.00, duracion: '50 min', desc: 'Corte completo, perfilado de barba, toalla caliente y loción.' },
+      { id: 'arreglo-barba', categoria: 'servicios', nombre: 'Arreglo & Perfilado Barba', precio: 12.00, duracion: '25 min', desc: 'Toalla caliente, aceites esenciales y navaja libre.' },
+      { id: 'corte-clasico', categoria: 'servicios', nombre: 'Corte Clásico a Tijera', precio: 14.00, duracion: '30 min', desc: 'Tijera tradicional, lavado y peinado con pomada.' },
+      { id: 'tinte-platinado', categoria: 'servicios', nombre: 'Platinado / Tinte Capilar', precio: 35.00, duracion: '80 min', desc: 'Decoloración profesional y matizado neón/plata.' },
+      { id: 'limpieza-facial', categoria: 'servicios', nombre: 'Mascarilla Negra & Vapor', precio: 10.00, duracion: '20 min', desc: 'Limpieza de puntos negros con exfoliación.' },
+      { id: 'pomada-mate', categoria: 'productos', nombre: 'Pomada Mate Fijación Fuerte', precio: 14.00, duracion: 'Envase 120g', desc: 'Acabado natural sin brillo y fijación 24h.' },
+      { id: 'aceite-barba', categoria: 'productos', nombre: 'Aceite Hidratante de Barba', precio: 12.00, duracion: 'Frasco 50ml', desc: 'Aroma amaderado con vitamina E y argán.' },
+      { id: 'after-shave', categoria: 'productos', nombre: 'Loción After-Shave Neón', precio: 10.00, duracion: 'Frasco 100ml', desc: 'Efecto frío calmante antiséptico para navaja.' },
+      { id: 'shampoo-barber', categoria: 'productos', nombre: 'Shampoo Anticaída Barber', precio: 16.00, duracion: 'Envase 250ml', desc: 'Biotina y mentol energizante.' }
+    ];
+
+    const HORARIOS_DEFAULT = [
+      '09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
+      '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM',
+      '05:00 PM', '06:00 PM', '07:00 PM'
+    ];
+
+    class BarberApp {
+      constructor() {
+        this.barberoSeleccionado = null;
+        this.servicioSeleccionado = null;
+        this.fechaSeleccionada = this.getTodayDate();
+        this.horaSeleccionada = null;
+        
+        this.carritoPOS = [];
+        this.metodoPagoPOS = 'efectivo';
+        this.categoriaPOS = 'todos';
+        
+        // Estado de autenticación: null | 'staff' (Jymmys) | 'admin' (admin)
+        this.userRole = null;
+
+        this.initStorage();
+        this.initUI();
+      }
+
+      getTodayDate() {
+        const today = new Date();
+        const y = today.getFullYear();
+        const m = String(today.getMonth() + 1).padStart(2, '0');
+        const d = String(today.getDate()).padStart(2, '0');
+        return `${y}-${m}-${d}`;
+      }
+
+      initStorage() {
+        // Inicializar credenciales configurables
+        if (!localStorage.getItem('jb_pass_admin')) {
+          localStorage.setItem('jb_pass_admin', '1234');
+        }
+        if (!localStorage.getItem('jb_pass_staff')) {
+          localStorage.setItem('jb_pass_staff', '123321');
+        }
+
+        // Inicializar catálogo de precios y servicios configurables
+        if (!localStorage.getItem('jb_catalogo')) {
+          localStorage.setItem('jb_catalogo', JSON.stringify(DEFAULT_CATALOGO));
+        }
+
+        if (!localStorage.getItem('jb_citas')) {
+          const dummyCitas = [
+            {
+              id: 'CITA-101',
+              fecha: this.getTodayDate(),
+              hora: '10:00 AM',
+              barbero: 'Jymmy Master',
+              servicio: 'Combo Corte + Barba Deluxe',
+              precio: 25.00,
+              cliente: 'Alejandro Morales',
+              telefono: '55 4433 2211',
+              notas: 'Degradado medio',
+              estado: 'completada'
+            },
+            {
+              id: 'CITA-102',
+              fecha: this.getTodayDate(),
+              hora: '03:00 PM',
+              barbero: 'Carlos Fade',
+              servicio: 'Corte Degradado / Fade',
+              precio: 15.00,
+              cliente: 'David Salazar',
+              telefono: '55 8899 0011',
+              notas: '',
+              estado: 'pendiente'
+            }
+          ];
+          localStorage.setItem('jb_citas', JSON.stringify(dummyCitas));
+        }
+
+        if (!localStorage.getItem('jb_ventas')) {
+          const dummyVentas = [
+            {
+              folio: '#JB-1001',
+              fecha: this.getTodayDate(),
+              hora: '10:45 AM',
+              cliente: 'Alejandro Morales',
+              metodo: 'efectivo',
+              items: [
+                { nombre: 'Combo Corte + Barba Deluxe', cant: 1, precio: 25.00, total: 25.00 },
+                { nombre: 'Pomada Mate Fijación Fuerte', cant: 1, precio: 14.00, total: 14.00 }
+              ],
+              subtotal: 39.00,
+              total: 39.00,
+              pagoCon: 50.00,
+              cambio: 11.00
+            }
+          ];
+          localStorage.setItem('jb_ventas', JSON.stringify(dummyVentas));
+        }
+      }
+
+      initUI() {
+        const fechaInput = document.getElementById('cita-fecha');
+        if (fechaInput) {
+          fechaInput.value = this.fechaSeleccionada;
+          fechaInput.min = this.fechaSeleccionada;
+          fechaInput.addEventListener('change', (e) => {
+            this.fechaSeleccionada = e.target.value;
+            this.actualizarResumenCita();
+            this.renderHorarios();
+          });
+        }
+
+        const adminFiltroFecha = document.getElementById('admin-filtro-fecha');
+        if (adminFiltroFecha) {
+          adminFiltroFecha.value = this.fechaSeleccionada;
+        }
+
+        this.renderBarberos();
+        this.renderServiciosCitas();
+        this.renderHorarios();
+        this.renderPOSGrid();
+        this.actualizarTotalesPOS();
+        this.actualizarBadgeCitas();
+        this.actualizarVistaSegunRol();
+        lucide.createIcons();
+      }
+
+      // ==========================================
+      // SISTEMA DE AUTENTICACIÓN & ROLES
+      // ==========================================
+      abrirModalLogin() {
+        audioManager.playClick();
+        document.getElementById('login-modal').classList.remove('hidden');
+        document.getElementById('login-user').focus();
+      }
+
+      cerrarModalLogin() {
+        audioManager.playClick();
+        document.getElementById('login-modal').classList.add('hidden');
+      }
+
+      procesarLogin(e) {
+        e.preventDefault();
+        const user = document.getElementById('login-user').value.trim();
+        const pass = document.getElementById('login-pass').value.trim();
+
+        const passAdminGuardada = localStorage.getItem('jb_pass_admin') || '1234';
+        const passStaffGuardada = localStorage.getItem('jb_pass_staff') || '123321';
+
+        // 1. Acceso Administrador Maestro (admin)
+        if (user.toLowerCase() === 'admin' && pass === passAdminGuardada) {
+          this.userRole = 'admin';
+          this.cerrarModalLogin();
+          audioManager.playSuccess();
+          this.actualizarVistaSegunRol();
+          this.mostrarToast("Sesión iniciada: Administrador Maestro", "success");
+          this.showTab('admin');
+          this.mostrarReporteAlEntrar();
+          return;
+        }
+
+        // 2. Acceso Trabajador / POS (Jymmys)
+        if (user.toLowerCase() === 'jymmys' && pass === passStaffGuardada) {
+          this.userRole = 'staff';
+          this.cerrarModalLogin();
+          audioManager.playSuccess();
+          this.actualizarVistaSegunRol();
+          this.mostrarToast("Acceso correcto a Punto de Venta (Jymmys)", "success");
+          this.showTab('pos');
+          return;
+        }
+
+        audioManager.playClick();
+        this.mostrarToast("Usuario o contraseña incorrectos", "error");
+      }
+
+      cerrarSesion() {
+        audioManager.playClick();
+        this.userRole = null;
+        this.actualizarVistaSegunRol();
+        this.showTab('citas');
+        this.mostrarToast("Sesión cerrada. Vista de cliente activa", "info");
+      }
+
+      actualizarVistaSegunRol() {
+        const staffNavTabs = document.getElementById('staff-nav-tabs');
+        const navBtnPos = document.getElementById('nav-btn-pos');
+        const navBtnAdmin = document.getElementById('nav-btn-admin');
+        const authMainBtn = document.getElementById('auth-main-btn');
+        const authMainBtnText = document.getElementById('auth-main-btn-text');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        const mobileNavBar = document.getElementById('mobile-nav-bar');
+        const mobileBtnPos = document.getElementById('mobile-btn-pos');
+        const mobileBtnAdmin = document.getElementById('mobile-btn-admin');
+
+        if (this.userRole === 'admin') {
+          // Mostrar todo (Citas, POS, Admin)
+          staffNavTabs.classList.remove('hidden');
+          navBtnPos.classList.remove('hidden');
+          navBtnAdmin.classList.remove('hidden');
+          logoutBtn.classList.remove('hidden');
+
+          mobileNavBar.classList.remove('hidden');
+          mobileNavBar.classList.add('flex');
+          mobileBtnPos.classList.remove('hidden');
+          mobileBtnAdmin.classList.remove('hidden');
+
+          authMainBtnText.textContent = "ADMIN ACTIVO";
+          authMainBtn.className = "px-3.5 py-2 rounded-xl text-xs font-semibold font-orbitron tracking-wider flex items-center gap-2 border border-barber-red text-barber-red bg-red-950/30";
+          this.renderCatalogoAdmin();
+        } else if (this.userRole === 'staff') {
+          // Mostrar Citas y POS solamente (Admin oculto)
+          staffNavTabs.classList.remove('hidden');
+          navBtnPos.classList.remove('hidden');
+          navBtnAdmin.classList.add('hidden');
+          logoutBtn.classList.remove('hidden');
+
+          mobileNavBar.classList.remove('hidden');
+          mobileNavBar.classList.add('flex');
+          mobileBtnPos.classList.remove('hidden');
+          mobileBtnAdmin.classList.add('hidden');
+
+          authMainBtnText.textContent = "POS STAFF";
+          authMainBtn.className = "px-3.5 py-2 rounded-xl text-xs font-semibold font-orbitron tracking-wider flex items-center gap-2 border border-barber-gold text-barber-gold bg-yellow-950/30";
+        } else {
+          // Cliente normal: TODO BLOQUEADO Y OCULTO, solo la agenda
+          staffNavTabs.classList.add('hidden');
+          logoutBtn.classList.add('hidden');
+          mobileNavBar.classList.add('hidden');
+          mobileNavBar.classList.remove('flex');
+
+          authMainBtnText.textContent = "ACCESO STAFF";
+          authMainBtn.className = "px-3.5 py-2 rounded-xl text-xs font-semibold font-orbitron tracking-wider flex items-center gap-2 border border-barber-cardBorder bg-black/50 hover:border-barber-blue hover:text-white text-gray-400";
+        }
+        lucide.createIcons();
+      }
+
+      // CAMBIAR PESTAÑAS (CITAS, POS, ADMIN)
+      showTab(tabName) {
+        audioManager.playClick();
+
+        // Control de permisos
+        if (tabName === 'pos' && !this.userRole) {
+          this.abrirModalLogin();
+          this.mostrarToast("Acceso restringido: Inicia sesión con usuario Jymmys o admin", "info");
+          return;
+        }
+
+        if (tabName === 'admin' && this.userRole !== 'admin') {
+          this.abrirModalLogin();
+          this.mostrarToast("Acceso exclusivo para el Administrador Maestro", "error");
+          return;
+        }
+
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+        const activeTab = document.getElementById(`tab-${tabName}`);
+        if (activeTab) activeTab.classList.remove('hidden');
+
+        ['citas', 'pos', 'admin'].forEach(name => {
+          const btn = document.getElementById(`nav-btn-${name}`);
+          if (btn) {
+            if (name === tabName) {
+              btn.className = "nav-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 bg-barber-cardBorder border-barber-blue text-white shadow-neon-cyan";
+            } else {
+              btn.className = "nav-tab-btn px-4 py-2 rounded-xl text-sm font-semibold transition-all flex items-center gap-2 border border-transparent text-gray-400 hover:text-white";
+            }
+          }
+        });
+
+        if (tabName === 'admin' && this.userRole === 'admin') {
+          this.actualizarDashboardAdmin();
+        }
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        lucide.createIcons();
+      }
+
+      // ==========================================
+      // SECCIÓN CITAS
+      // ==========================================
+      renderBarberos() {
+        const container = document.getElementById('barberos-container');
+        if (!container) return;
+
+        container.innerHTML = INITIAL_BARBEROS.map(barbero => `
+          <div onclick="app.seleccionarBarbero('${barbero.id}')" id="card-barbero-${barbero.id}" 
+               class="barbero-card cursor-pointer p-4 rounded-xl border border-barber-cardBorder bg-black/40 hover:bg-barber-cardBorder/40 transition-all flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-tr ${barbero.fotoColor} flex items-center justify-center text-xl shadow-lg border border-white/20">
+              ${barbero.avatar}
+            </div>
+            <div>
+              <h4 class="font-bold text-white text-sm">${barbero.nombre}</h4>
+              <p class="text-[11px] text-gray-400">${barbero.especialidad}</p>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      seleccionarBarbero(id) {
+        audioManager.playScissors();
+        this.barberoSeleccionado = INITIAL_BARBEROS.find(b => b.id === id);
+        
+        document.querySelectorAll('.barbero-card').forEach(card => {
+          card.classList.remove('border-barber-blue', 'bg-barber-blue/10', 'shadow-neon-cyan');
+        });
+
+        const activeCard = document.getElementById(`card-barbero-${id}`);
+        if (activeCard) {
+          activeCard.classList.add('border-barber-blue', 'bg-barber-blue/10', 'shadow-neon-cyan');
+        }
+
+        this.actualizarResumenCita();
+      }
+
+      renderServiciosCitas() {
+        const container = document.getElementById('servicios-citas-container');
+        if (!container) return;
+
+        const catalogo = JSON.parse(localStorage.getItem('jb_catalogo') || '[]');
+        const servicios = catalogo.filter(item => item.categoria === 'servicios');
+
+        container.innerHTML = servicios.map(serv => `
+          <div onclick="app.seleccionarServicio('${serv.id}')" id="card-servicio-${serv.id}" 
+               class="servicio-card cursor-pointer p-4 rounded-xl border border-barber-cardBorder bg-black/40 hover:bg-barber-cardBorder/40 transition-all">
+            <div class="flex justify-between items-start mb-1">
+              <h4 class="font-bold text-white text-sm">${serv.nombre}</h4>
+              <span class="font-orbitron font-bold text-barber-gold text-sm">$${serv.precio.toFixed(2)}</span>
+            </div>
+            <p class="text-[11px] text-gray-400 mb-2">${serv.desc || ''}</p>
+            <div class="flex items-center text-[10px] text-barber-blue">
+              <i data-lucide="clock" class="w-3 h-3 mr-1"></i> ${serv.duracion || '30 min'}
+            </div>
+          </div>
+        `).join('');
+        lucide.createIcons();
+      }
+
+      seleccionarServicio(id) {
+        audioManager.playClick();
+        const catalogo = JSON.parse(localStorage.getItem('jb_catalogo') || '[]');
+        this.servicioSeleccionado = catalogo.find(s => s.id === id);
+
+        document.querySelectorAll('.servicio-card').forEach(card => {
+          card.classList.remove('border-barber-red', 'bg-barber-red/10', 'shadow-neon-red');
+        });
+
+        const activeCard = document.getElementById(`card-servicio-${id}`);
+        if (activeCard) {
+          activeCard.classList.add('border-barber-red', 'bg-barber-red/10', 'shadow-neon-red');
+        }
+
+        this.actualizarResumenCita();
+      }
+
+      renderHorarios() {
+        const container = document.getElementById('horarios-container');
+        if (!container) return;
+
+        const citas = JSON.parse(localStorage.getItem('jb_citas') || '[]');
+        const ocupados = citas
+          .filter(c => c.fecha === this.fechaSeleccionada && c.estado !== 'cancelada')
+          .map(c => c.hora);
+
+        container.innerHTML = HORARIOS_DEFAULT.map(hora => {
+          const estaOcupado = ocupados.includes(hora);
+          if (estaOcupado) {
+            return `
+              <div class="py-2.5 px-2 rounded-xl text-center text-xs font-semibold bg-black/30 border border-gray-800 text-gray-600 cursor-not-allowed">
+                ${hora}
+                <span class="block text-[9px] text-red-500/70">Ocupado</span>
+              </div>
+            `;
+          }
+          return `
+            <button type="button" onclick="app.seleccionarHora('${hora}')" id="hora-btn-${hora.replace(/[:\s]/g, '')}" 
+                    class="hora-btn py-2.5 px-2 rounded-xl text-center text-xs font-semibold bg-black/60 border border-barber-cardBorder text-gray-300 hover:text-white hover:border-barber-green hover:shadow-neon-green transition-all">
+              ${hora}
+            </button>
+          `;
+        }).join('');
+      }
+
+      seleccionarHora(hora) {
+        audioManager.playClick();
+        this.horaSeleccionada = hora;
+
+        document.querySelectorAll('.hora-btn').forEach(btn => {
+          btn.classList.remove('bg-barber-green/20', 'border-barber-green', 'text-barber-green', 'shadow-neon-green');
+        });
+
+        const activeBtn = document.getElementById(`hora-btn-${hora.replace(/[:\s]/g, '')}`);
+        if (activeBtn) {
+          activeBtn.classList.add('bg-barber-green/20', 'border-barber-green', 'text-barber-green', 'shadow-neon-green');
+        }
+
+        this.actualizarResumenCita();
+      }
+
+      actualizarResumenCita() {
+        document.getElementById('resumen-barbero').textContent = this.barberoSeleccionado ? this.barberoSeleccionado.nombre : 'Sin seleccionar';
+        document.getElementById('resumen-servicio').textContent = this.servicioSeleccionado ? this.servicioSeleccionado.nombre : 'Sin seleccionar';
+        document.getElementById('resumen-fecha').textContent = this.fechaSeleccionada || 'Hoy';
+        document.getElementById('resumen-hora').textContent = this.horaSeleccionada || 'Sin seleccionar';
+        document.getElementById('resumen-precio').textContent = this.servicioSeleccionado ? `$${this.servicioSeleccionado.precio.toFixed(2)}` : '$0.00';
+      }
+
+      guardarCita(e) {
+        e.preventDefault();
+
+        if (!this.barberoSeleccionado) {
+          this.mostrarToast("Por favor selecciona un barbero", "error");
+          return;
+        }
+        if (!this.servicioSeleccionado) {
+          this.mostrarToast("Por favor selecciona un servicio", "error");
+          return;
+        }
+        if (!this.horaSeleccionada) {
+          this.mostrarToast("Por favor selecciona un horario disponible", "error");
+          return;
+        }
+
+        const nombre = document.getElementById('cliente-nombre').value.trim();
+        const telefono = document.getElementById('cliente-telefono').value.trim();
+        const notas = document.getElementById('cliente-notas').value.trim();
+
+        const nuevaCita = {
+          id: `CITA-${Date.now().toString().slice(-4)}`,
+          fecha: this.fechaSeleccionada,
+          hora: this.horaSeleccionada,
+          barbero: this.barberoSeleccionado.nombre,
+          servicio: this.servicioSeleccionado.nombre,
+          precio: this.servicioSeleccionado.precio,
+          cliente: nombre,
+          telefono: telefono,
+          notas: notas,
+          estado: 'pendiente'
+        };
+
+        const citas = JSON.parse(localStorage.getItem('jb_citas') || '[]');
+        citas.unshift(nuevaCita);
+        localStorage.setItem('jb_citas', JSON.stringify(citas));
+
+        audioManager.playScissors();
+        setTimeout(() => audioManager.playSuccess(), 250);
+
+        this.mostrarToast(`¡Cita agendada para ${nombre} a las ${this.horaSeleccionada}!`, "success");
+
+        document.getElementById('form-agendar-cita').reset();
+        this.horaSeleccionada = null;
+        this.servicioSeleccionado = null;
+        this.barberoSeleccionado = null;
+        document.querySelectorAll('.barbero-card, .servicio-card, .hora-btn').forEach(el => {
+          el.className = el.className.replace(/border-barber-(blue|red|green)|shadow-neon-(cyan|red|green)|bg-barber-(blue|red|green)\/10/g, '').trim();
+        });
+
+        this.actualizarResumenCita();
+        this.renderHorarios();
+        this.actualizarBadgeCitas();
+        if (this.userRole === 'admin') this.actualizarDashboardAdmin();
+      }
+
+      // ==========================================
+      // SECCIÓN PUNTO DE VENTA (POS)
+      // ==========================================
+      setCategoriaPOS(cat) {
+        audioManager.playClick();
+        this.categoriaPOS = cat;
+
+        ['todos', 'servicios', 'productos'].forEach(c => {
+          const btn = document.getElementById(`cat-btn-${c}`);
+          if (btn) {
+            if (c === cat) {
+              btn.className = "px-4 py-2 rounded-xl text-xs font-bold transition-all bg-barber-blue text-black shadow-neon-cyan";
+            } else {
+              btn.className = "px-4 py-2 rounded-xl text-xs font-bold transition-all bg-barber-cardBorder text-gray-300 hover:text-white";
+            }
+          }
+        });
+
+        this.renderPOSGrid();
+      }
+
+      renderPOSGrid() {
+        const container = document.getElementById('pos-items-grid');
+        if (!container) return;
+
+        let items = JSON.parse(localStorage.getItem('jb_catalogo') || '[]');
+        if (this.categoriaPOS !== 'todos') {
+          items = items.filter(i => i.categoria === this.categoriaPOS);
+        }
+
+        container.innerHTML = items.map(item => {
+          const esServicio = item.categoria === 'servicios';
+          return `
+            <div onclick="app.agregarAlCarritoPOS('${item.id}')" 
+                 class="bg-black/40 border border-barber-cardBorder hover:border-${esServicio ? 'barber-blue' : 'barber-gold'} p-4 rounded-xl cursor-pointer transition-all transform hover:-translate-y-1 hover:shadow-lg flex flex-col justify-between group">
+              <div>
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-[10px] uppercase font-bold px-2 py-0.5 rounded ${esServicio ? 'bg-barber-blue/20 text-barber-blue' : 'bg-barber-gold/20 text-barber-gold'}">
+                    ${esServicio ? 'Servicio' : 'Producto'}
+                  </span>
+                  <i data-lucide="${esServicio ? 'scissors' : 'package'}" class="w-4 h-4 text-gray-500 group-hover:text-white transition-colors"></i>
+                </div>
+                <h4 class="font-bold text-white text-xs mb-1 line-clamp-2">${item.nombre}</h4>
+                <p class="text-[10px] text-gray-400 mb-2">${item.duracion || ''}</p>
+              </div>
+              <div class="flex items-center justify-between pt-2 border-t border-gray-800">
+                <span class="font-orbitron font-bold text-barber-gold text-sm">$${item.precio.toFixed(2)}</span>
+                <span class="w-6 h-6 rounded-lg bg-barber-cardBorder group-hover:bg-barber-blue group-hover:text-black flex items-center justify-center text-xs font-bold transition-colors">
+                  +
+                </span>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        lucide.createIcons();
+      }
+
+      agregarAlCarritoPOS(itemId) {
+        audioManager.playClick();
+        const catalogo = JSON.parse(localStorage.getItem('jb_catalogo') || '[]');
+        const item = catalogo.find(i => i.id === itemId);
+        if (!item) return;
+
+        const existente = this.carritoPOS.find(i => i.id === itemId);
+        if (existente) {
+          existente.cant += 1;
+        } else {
+          this.carritoPOS.push({
+            id: item.id,
+            nombre: item.nombre,
+            precio: item.precio,
+            cant: 1
+          });
+        }
+
+        this.renderCarritoPOS();
+      }
+
+      modificarCantCarrito(itemId, delta) {
+        audioManager.playClick();
+        const item = this.carritoPOS.find(i => i.id === itemId);
+        if (!item) return;
+
+        item.cant += delta;
+        if (item.cant <= 0) {
+          this.carritoPOS = this.carritoPOS.filter(i => i.id !== itemId);
+        }
+
+        this.renderCarritoPOS();
+      }
+
+      limpiarCarritoPOS() {
+        audioManager.playClick();
+        this.carritoPOS = [];
+        this.renderCarritoPOS();
+      }
+
+      renderCarritoPOS() {
+        const container = document.getElementById('pos-cart-items');
+        if (!container) return;
+
+        if (this.carritoPOS.length === 0) {
+          container.innerHTML = `
+            <div class="text-center py-12 text-gray-500 text-xs">
+              <i data-lucide="shopping-bag" class="w-10 h-10 mx-auto mb-2 opacity-30"></i>
+              Agrega servicios o productos para cobrar
+            </div>
+          `;
+          lucide.createIcons();
+          this.actualizarTotalesPOS();
+          return;
+        }
+
+        container.innerHTML = this.carritoPOS.map(item => `
+          <div class="bg-black/50 border border-barber-cardBorder p-2.5 rounded-xl flex items-center justify-between text-xs">
+            <div class="flex-grow pr-2">
+              <div class="font-bold text-white leading-tight">${item.nombre}</div>
+              <div class="text-gray-400 text-[10px]">$${item.precio.toFixed(2)} c/u</div>
+            </div>
+            
+            <div class="flex items-center space-x-2">
+              <div class="flex items-center bg-barber-cardBorder rounded-lg">
+                <button onclick="app.modificarCantCarrito('${item.id}', -1)" class="w-6 h-6 flex items-center justify-center text-gray-300 hover:text-white font-bold">-</button>
+                <span class="w-6 text-center font-bold text-white text-xs">${item.cant}</span>
+                <button onclick="app.modificarCantCarrito('${item.id}', 1)" class="w-6 h-6 flex items-center justify-center text-gray-300 hover:text-white font-bold">+</button>
+              </div>
+              <span class="font-orbitron font-bold text-barber-gold w-14 text-right">$${(item.precio * item.cant).toFixed(2)}</span>
+            </div>
+          </div>
+        `).join('');
+
+        this.actualizarTotalesPOS();
+      }
+
+      setMetodoPago(metodo) {
+        audioManager.playClick();
+        this.metodoPagoPOS = metodo;
+
+        const contenedorCambio = document.getElementById('contenedor-cambio');
+        if (metodo === 'efectivo') {
+          contenedorCambio.classList.remove('hidden');
+        } else {
+          contenedorCambio.classList.add('hidden');
+        }
+
+        ['efectivo', 'tarjeta', 'transferencia'].forEach(m => {
+          const btn = document.getElementById(`metodo-${m}`);
+          if (btn) {
+            if (m === metodo) {
+              btn.className = "metodo-btn py-1.5 rounded-lg text-xs font-semibold border border-barber-green bg-barber-green/20 text-barber-green flex items-center justify-center gap-1 shadow-neon-green";
+            } else {
+              btn.className = "metodo-btn py-1.5 rounded-lg text-xs font-semibold border border-gray-700 bg-black/40 text-gray-400 flex items-center justify-center gap-1";
+            }
+          }
+        });
+      }
+
+      calcularCambio() {
+        const total = this.carritoPOS.reduce((acc, i) => acc + (i.precio * i.cant), 0);
+        const pagaConInput = document.getElementById('pos-paga-con');
+        const cambioInput = document.getElementById('pos-cambio');
+        const pagaCon = parseFloat(pagaConInput.value) || 0;
+
+        if (pagaCon >= total) {
+          cambioInput.value = `$${(pagaCon - total).toFixed(2)}`;
+          cambioInput.classList.remove('text-red-400');
+          cambioInput.classList.add('text-barber-green');
+        } else {
+          cambioInput.value = `Falta $${(total - pagaCon).toFixed(2)}`;
+          cambioInput.classList.remove('text-barber-green');
+          cambioInput.classList.add('text-red-400');
+        }
+      }
+
+      actualizarTotalesPOS() {
+        const total = this.carritoPOS.reduce((acc, i) => acc + (i.precio * i.cant), 0);
+        document.getElementById('pos-subtotal').textContent = `$${total.toFixed(2)}`;
+        document.getElementById('pos-total').textContent = `$${total.toFixed(2)}`;
+        this.calcularCambio();
+
+        const ventas = JSON.parse(localStorage.getItem('jb_ventas') || '[]');
+        const totalHoy = ventas
+          .filter(v => v.fecha === this.getTodayDate())
+          .reduce((acc, v) => acc + v.total, 0);
+
+        document.getElementById('pos-total-dia').textContent = `$${totalHoy.toFixed(2)}`;
+      }
+
+      procesarVentaPOS() {
+        if (this.carritoPOS.length === 0) {
+          this.mostrarToast("El carrito está vacío. Agrega ítems a cobrar", "error");
+          return;
+        }
+
+        const total = this.carritoPOS.reduce((acc, i) => acc + (i.precio * i.cant), 0);
+        const clienteNombre = document.getElementById('pos-cliente-nombre').value.trim() || 'Cliente Mostrador';
+        let pagaCon = total;
+        let cambio = 0;
+
+        if (this.metodoPagoPOS === 'efectivo') {
+          const inputPaga = parseFloat(document.getElementById('pos-paga-con').value);
+          if (isNaN(inputPaga) || inputPaga < total) {
+            this.mostrarToast("El monto pagado en efectivo es menor al total", "error");
+            return;
+          }
+          pagaCon = inputPaga;
+          cambio = pagaCon - total;
+        }
+
+        const now = new Date();
+        const folio = `#JB-${Date.now().toString().slice(-4)}`;
+        const horaStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        const nuevaVenta = {
+          folio: folio,
+          fecha: this.getTodayDate(),
+          hora: horaStr,
+          cliente: clienteNombre,
+          metodo: this.metodoPagoPOS,
+          items: this.carritoPOS.map(i => ({ ...i, total: i.precio * i.cant })),
+          subtotal: total,
+          total: total,
+          pagoCon: pagaCon,
+          cambio: cambio
+        };
+
+        const ventas = JSON.parse(localStorage.getItem('jb_ventas') || '[]');
+        ventas.unshift(nuevaVenta);
+        localStorage.setItem('jb_ventas', JSON.stringify(ventas));
+
+        audioManager.playChaChing();
+        this.mostrarTicket(nuevaVenta);
+
+        this.carritoPOS = [];
+        document.getElementById('pos-cliente-nombre').value = '';
+        document.getElementById('pos-paga-con').value = '';
+        this.renderCarritoPOS();
+
+        if (this.userRole === 'admin') this.actualizarDashboardAdmin();
+      }
+
+      // ==========================================
+      // SECCIÓN TICKET DE VENTA
+      // ==========================================
+      mostrarTicket(venta) {
+        document.getElementById('ticket-folio').textContent = venta.folio;
+        document.getElementById('ticket-fecha').textContent = venta.fecha;
+        document.getElementById('ticket-hora').textContent = venta.hora;
+        document.getElementById('ticket-cliente').textContent = venta.cliente;
+        document.getElementById('ticket-metodo').textContent = venta.metodo.toUpperCase();
+
+        const itemsContainer = document.getElementById('ticket-items');
+        itemsContainer.innerHTML = venta.items.map(item => `
+          <div class="grid grid-cols-12 text-[11px]">
+            <span class="col-span-2">${item.cant}x</span>
+            <span class="col-span-6 truncate">${item.nombre}</span>
+            <span class="col-span-4 text-right font-bold">$${item.total.toFixed(2)}</span>
+          </div>
+        `).join('');
+
+        document.getElementById('ticket-subtotal').textContent = `$${venta.subtotal.toFixed(2)}`;
+        document.getElementById('ticket-total').textContent = `$${venta.total.toFixed(2)}`;
+
+        const rowPaga = document.getElementById('ticket-row-paga');
+        const rowCambio = document.getElementById('ticket-row-cambio');
+
+        if (venta.metodo === 'efectivo') {
+          rowPaga.style.display = 'flex';
+          rowCambio.style.display = 'flex';
+          document.getElementById('ticket-paga').textContent = `$${venta.pagoCon.toFixed(2)}`;
+          document.getElementById('ticket-cambio').textContent = `$${venta.cambio.toFixed(2)}`;
+        } else {
+          rowPaga.style.display = 'none';
+          rowCambio.style.display = 'none';
+        }
+
+        document.getElementById('ticket-modal').classList.remove('hidden');
+        lucide.createIcons();
+      }
+
+      cerrarTicket() {
+        audioManager.playClick();
+        document.getElementById('ticket-modal').classList.add('hidden');
+      }
+
+      // ==========================================
+      // SECCIÓN GESTIÓN DE PRECIOS & CATÁLOGO (ADMIN)
+      // ==========================================
+      renderCatalogoAdmin() {
+        const tbody = document.getElementById('admin-catalogo-tbody');
+        if (!tbody) return;
+
+        const catalogo = JSON.parse(localStorage.getItem('jb_catalogo') || '[]');
+
+        tbody.innerHTML = catalogo.map(item => `
+          <tr class="hover:bg-white/5 transition-colors">
+            <td class="p-3 font-semibold text-white">${item.nombre}</td>
+            <td class="p-3">
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold uppercase ${item.categoria === 'servicios' ? 'bg-barber-blue/20 text-barber-blue' : 'bg-barber-gold/20 text-barber-gold'}">
+                ${item.categoria === 'servicios' ? 'Servicio' : 'Producto'}
+              </span>
+            </td>
+            <td class="p-3 text-xs text-gray-400">${item.duracion || '-'}</td>
+            <td class="p-3">
+              <div class="flex items-center gap-1.5">
+                <span class="text-xs text-gray-500">$</span>
+                <input type="number" step="0.5" value="${item.precio.toFixed(2)}" onchange="app.actualizarPrecioItem('${item.id}', this.value)" 
+                       class="w-24 bg-black/60 border border-gray-700 focus:border-barber-gold rounded px-2 py-1 text-sm font-orbitron font-bold text-barber-gold text-right">
+              </div>
+            </td>
+            <td class="p-3 text-right space-x-1">
+              <button onclick="app.editarItem('${item.id}')" class="px-2.5 py-1 rounded bg-barber-cardBorder hover:bg-gray-700 text-xs text-gray-200" title="Editar">
+                Editar
+              </button>
+              <button onclick="app.eliminarItem('${item.id}')" class="px-2 py-1 rounded bg-red-950/40 hover:bg-red-900 text-xs text-red-400" title="Eliminar">
+                ✕
+              </button>
+            </td>
+          </tr>
+        `).join('');
+
+        lucide.createIcons();
+      }
+
+      actualizarPrecioItem(id, nuevoPrecioStr) {
+        const nuevoPrecio = parseFloat(nuevoPrecioStr);
+        if (isNaN(nuevoPrecio) || nuevoPrecio < 0) {
+          this.mostrarToast("Precio inválido", "error");
+          return;
+        }
+
+        const catalogo = JSON.parse(localStorage.getItem('jb_catalogo') || '[]');
+        const item = catalogo.find(i => i.id === id);
+        if (item) {
+          item.precio = nuevoPrecio;
+          localStorage.setItem('jb_catalogo', JSON.stringify(catalogo));
+          audioManager.playClick();
+          this.mostrarToast(`Precio de "${item.nombre}" actualizado a $${nuevoPrecio.toFixed(2)}`, "success");
+          
+          this.renderServiciosCitas();
+          this.renderPOSGrid();
+        }
+      }
+
+      abrirModalNuevoItem() {
+        audioManager.playClick();
+        document.getElementById('item-id').value = '';
+        document.getElementById('item-nombre').value = '';
+        document.getElementById('item-categoria').value = 'servicios';
+        document.getElementById('item-precio').value = '';
+        document.getElementById('item-duracion').value = '';
+        document.getElementById('item-desc').value = '';
+        document.getElementById('item-modal').classList.remove('hidden');
+      }
+
+      editarItem(id) {
+        audioManager.playClick();
+        const catalogo = JSON.parse(localStorage.getItem('jb_catalogo') || '[]');
+        const item = catalogo.find(i => i.id === id);
+        if (!item) return;
+
+        document.getElementById('item-id').value = item.id;
+        document.getElementById('item-nombre').value = item.nombre;
+        document.getElementById('item-categoria').value = item.categoria;
+        document.getElementById('item-precio').value = item.precio;
+        document.getElementById('item-duracion').value = item.duracion || '';
+        document.getElementById('item-desc').value = item.desc || '';
+        document.getElementById('item-modal').classList.remove('hidden');
+      }
+
+      guardarItemCatalogo(e) {
+        e.preventDefault();
+        const id = document.getElementById('item-id').value;
+        const nombre = document.getElementById('item-nombre').value.trim();
+        const categoria = document.getElementById('item-categoria').value;
+        const precio = parseFloat(document.getElementById('item-precio').value);
+        const duracion = document.getElementById('item-duracion').value.trim();
+        const desc = document.getElementById('item-desc').value.trim();
+
+        const catalogo = JSON.parse(localStorage.getItem('jb_catalogo') || '[]');
+
+        if (id) {
+          // Editar existente
+          const item = catalogo.find(i => i.id === id);
+          if (item) {
+            item.nombre = nombre;
+            item.categoria = categoria;
+            item.precio = precio;
+            item.duracion = duracion;
+            item.desc = desc;
+          }
+        } else {
+          // Crear nuevo
+          const nuevoId = `item-${Date.now().toString().slice(-5)}`;
+          catalogo.push({
+            id: nuevoId,
+            nombre,
+            categoria,
+            precio,
+            duracion,
+            desc
+          });
+        }
+
+        localStorage.setItem('jb_catalogo', JSON.stringify(catalogo));
+        document.getElementById('item-modal').classList.add('hidden');
+        audioManager.playSuccess();
+        this.mostrarToast("Catálogo actualizado correctamente", "success");
+
+        this.renderCatalogoAdmin();
+        this.renderServiciosCitas();
+        this.renderPOSGrid();
+      }
+
+      eliminarItem(id) {
+        if (!confirm("¿Seguro que deseas eliminar este artículo o servicio?")) return;
+        let catalogo = JSON.parse(localStorage.getItem('jb_catalogo') || '[]');
+        catalogo = catalogo.filter(i => i.id !== id);
+        localStorage.setItem('jb_catalogo', JSON.stringify(catalogo));
+
+        audioManager.playClick();
+        this.mostrarToast("Elemento eliminado", "info");
+        this.renderCatalogoAdmin();
+        this.renderServiciosCitas();
+        this.renderPOSGrid();
+      }
+
+      // ==========================================
+      // SECCIÓN GESTIÓN DE CONTRASEÑAS (ADMIN)
+      // ==========================================
+      cambiarPassAdmin(e) {
+        e.preventDefault();
+        const nueva = document.getElementById('nueva-pass-admin').value.trim();
+        if (nueva.length < 4) {
+          this.mostrarToast("La contraseña debe tener al menos 4 caracteres", "error");
+          return;
+        }
+
+        localStorage.setItem('jb_pass_admin', nueva);
+        audioManager.playSuccess();
+        document.getElementById('nueva-pass-admin').value = '';
+        this.mostrarToast("Contraseña de Administrador actualizada", "success");
+      }
+
+      cambiarPassStaff(e) {
+        e.preventDefault();
+        const nueva = document.getElementById('nueva-pass-staff').value.trim();
+        if (nueva.length < 4) {
+          this.mostrarToast("La contraseña debe tener al menos 4 caracteres", "error");
+          return;
+        }
+
+        localStorage.setItem('jb_pass_staff', nueva);
+        audioManager.playSuccess();
+        document.getElementById('nueva-pass-staff').value = '';
+        this.mostrarToast("Contraseña de Trabajadores (Jymmys) actualizada", "success");
+      }
+
+      // ==========================================
+      // REPORTES Y DASHBOARD (ADMIN)
+      // ==========================================
+      mostrarReporteAlEntrar() {
+        const ventas = JSON.parse(localStorage.getItem('jb_ventas') || '[]');
+        const citas = JSON.parse(localStorage.getItem('jb_citas') || '[]');
+        const hoy = this.getTodayDate();
+
+        const ventasHoy = ventas.filter(v => v.fecha === hoy);
+        const totalVendido = ventasHoy.reduce((acc, v) => acc + v.total, 0);
+        const efectivo = ventasHoy.filter(v => v.metodo === 'efectivo').reduce((acc, v) => acc + v.total, 0);
+        const citasHoy = citas.filter(c => c.fecha === hoy && c.estado === 'pendiente');
+
+        document.getElementById('modal-reporte-total').textContent = `$${totalVendido.toFixed(2)}`;
+        document.getElementById('modal-reporte-tickets').textContent = ventasHoy.length;
+        document.getElementById('modal-reporte-citas').textContent = citasHoy.length;
+        document.getElementById('modal-reporte-efectivo').textContent = `$${efectivo.toFixed(2)}`;
+
+        document.getElementById('admin-welcome-modal').classList.remove('hidden');
+      }
+
+      actualizarDashboardAdmin() {
+        const ventas = JSON.parse(localStorage.getItem('jb_ventas') || '[]');
+        const citas = JSON.parse(localStorage.getItem('jb_citas') || '[]');
+        const hoy = this.getTodayDate();
+
+        const ventasHoy = ventas.filter(v => v.fecha === hoy);
+        const totalVentas = ventasHoy.reduce((acc, v) => acc + v.total, 0);
+        const efectivoHoy = ventasHoy.filter(v => v.metodo === 'efectivo').reduce((acc, v) => acc + v.total, 0);
+        const citasHoy = citas.filter(c => c.fecha === hoy);
+
+        document.getElementById('stat-ventas-hoy').textContent = `$${totalVentas.toFixed(2)}`;
+        document.getElementById('stat-citas-hoy').textContent = citasHoy.length;
+        document.getElementById('stat-tickets-hoy').textContent = ventasHoy.length;
+        document.getElementById('stat-efectivo-hoy').textContent = `$${efectivoHoy.toFixed(2)}`;
+
+        this.renderCatalogoAdmin();
+        this.renderCitasAdmin();
+        this.renderVentasAdmin();
+      }
+
+      renderCitasAdmin() {
+        const tbody = document.getElementById('admin-citas-tbody');
+        if (!tbody) return;
+
+        const filtroFecha = document.getElementById('admin-filtro-fecha').value || this.getTodayDate();
+        const citas = JSON.parse(localStorage.getItem('jb_citas') || '[]');
+        const filtradas = citas.filter(c => c.fecha === filtroFecha);
+
+        if (filtradas.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-500 text-xs">No hay citas registradas para esta fecha</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = filtradas.map(c => `
+          <tr class="hover:bg-white/5 transition-colors">
+            <td class="p-3 font-semibold text-white">
+              <span class="text-barber-blue font-bold">${c.hora}</span>
+              <span class="block text-[11px] text-gray-400">${c.fecha}</span>
+            </td>
+            <td class="p-3">
+              <div class="font-bold text-white">${c.cliente}</div>
+              <a href="https://wa.me/${c.telefono.replace(/\D/g, '')}" target="_blank" class="text-[11px] text-green-400 hover:underline flex items-center gap-1">
+                <i data-lucide="message-circle" class="w-3 h-3"></i> ${c.telefono}
+              </a>
+            </td>
+            <td class="p-3 text-gray-300 font-medium">${c.barbero}</td>
+            <td class="p-3 text-gray-300">${c.servicio}</td>
+            <td class="p-3 font-orbitron font-bold text-barber-gold">$${c.precio.toFixed(2)}</td>
+            <td class="p-3">
+              <span class="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase ${c.estado === 'completada' ? 'bg-barber-green/20 text-barber-green' : c.estado === 'cancelada' ? 'bg-red-500/20 text-red-400' : 'bg-barber-blue/20 text-barber-blue'}">
+                ${c.estado}
+              </span>
+            </td>
+            <td class="p-3 text-right space-x-1">
+              ${c.estado === 'pendiente' ? `
+                <button onclick="app.cobrarCitaEnPOS('${c.id}')" class="px-2.5 py-1 rounded bg-barber-gold/20 hover:bg-barber-gold/40 text-barber-gold text-xs font-bold transition-all" title="Cobrar en Punto de Venta">
+                  Cobrar
+                </button>
+                <button onclick="app.cambiarEstadoCita('${c.id}', 'completada')" class="px-2 py-1 rounded bg-barber-green/20 hover:bg-barber-green/40 text-barber-green text-xs font-bold transition-all" title="Marcar Realizada">
+                  ✓
+                </button>
+                <button onclick="app.cambiarEstadoCita('${c.id}', 'cancelada')" class="px-2 py-1 rounded bg-red-500/20 hover:bg-red-500/40 text-red-400 text-xs font-bold transition-all" title="Cancelar">
+                  ✕
+                </button>
+              ` : `
+                <span class="text-xs text-gray-500 italic">Cerrada</span>
+              `}
+            </td>
+          </tr>
+        `).join('');
+
+        lucide.createIcons();
+      }
+
+      cobrarCitaEnPOS(citaId) {
+        const citas = JSON.parse(localStorage.getItem('jb_citas') || '[]');
+        const cita = citas.find(c => c.id === citaId);
+        if (!cita) return;
+
+        this.carritoPOS = [{
+          id: `cita-${cita.id}`,
+          nombre: `[Cita ${cita.hora}] ${cita.servicio} (${cita.barbero})`,
+          precio: cita.precio,
+          cant: 1
+        }];
+
+        document.getElementById('pos-cliente-nombre').value = cita.cliente;
+        this.cambiarEstadoCita(citaId, 'completada');
+        this.showTab('pos');
+        this.renderCarritoPOS();
+        this.mostrarToast(`Cita de ${cita.cliente} transferida al POS para cobro`, "info");
+      }
+
+      cambiarEstadoCita(citaId, nuevoEstado) {
+        audioManager.playClick();
+        const citas = JSON.parse(localStorage.getItem('jb_citas') || '[]');
+        const cita = citas.find(c => c.id === citaId);
+        if (cita) {
+          cita.estado = nuevoEstado;
+          localStorage.setItem('jb_citas', JSON.stringify(citas));
+          this.actualizarDashboardAdmin();
+          this.actualizarBadgeCitas();
+          this.mostrarToast(`Cita marcada como ${nuevoEstado}`, "info");
+        }
+      }
+
+      renderVentasAdmin() {
+        const tbody = document.getElementById('admin-ventas-tbody');
+        if (!tbody) return;
+
+        const ventas = JSON.parse(localStorage.getItem('jb_ventas') || '[]');
+
+        if (ventas.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-gray-500 text-xs">No hay ventas registradas</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = ventas.slice(0, 15).map(v => `
+          <tr class="hover:bg-white/5 transition-colors">
+            <td class="p-3 font-mono text-barber-gold font-bold">${v.folio}</td>
+            <td class="p-3 text-xs text-gray-400">${v.fecha} ${v.hora}</td>
+            <td class="p-3 font-semibold text-white">${v.cliente}</td>
+            <td class="p-3 text-xs text-gray-300">
+              ${v.items.map(i => `${i.cant}x ${i.nombre}`).join(', ')}
+            </td>
+            <td class="p-3 text-xs uppercase font-semibold text-barber-green">${v.metodo}</td>
+            <td class="p-3 font-orbitron font-black text-barber-gold">$${v.total.toFixed(2)}</td>
+            <td class="p-3 text-right">
+              <button onclick='app.reimprimirTicketFolio("${v.folio}")' class="px-2.5 py-1 rounded bg-barber-cardBorder hover:bg-white/10 text-xs text-gray-200 font-semibold transition-all">
+                Ver
+              </button>
+            </td>
+          </tr>
+        `).join('');
+      }
+
+      reimprimirTicketFolio(folio) {
+        const ventas = JSON.parse(localStorage.getItem('jb_ventas') || '[]');
+        const venta = ventas.find(v => v.folio === folio);
+        if (venta) {
+          audioManager.playClick();
+          this.mostrarTicket(venta);
+        }
+      }
+
+      generarCorteCaja() {
+        audioManager.playChaChing();
+        const ventas = JSON.parse(localStorage.getItem('jb_ventas') || '[]');
+        const hoy = this.getTodayDate();
+        const ventasHoy = ventas.filter(v => v.fecha === hoy);
+
+        const totalVentas = ventasHoy.reduce((acc, v) => acc + v.total, 0);
+        const efectivo = ventasHoy.filter(v => v.metodo === 'efectivo').reduce((acc, v) => acc + v.total, 0);
+        const tarjeta = ventasHoy.filter(v => v.metodo === 'tarjeta').reduce((acc, v) => acc + v.total, 0);
+        const transfer = ventasHoy.filter(v => v.metodo === 'transferencia').reduce((acc, v) => acc + v.total, 0);
+
+        const corte = {
+          folio: `#CORTE-${hoy}`,
+          fecha: hoy,
+          hora: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          cliente: 'ARQUEO / CORTE DE CAJA DIARIO',
+          metodo: 'SISTEMA',
+          items: [
+            { nombre: 'Cobros en Efectivo', cant: ventasHoy.filter(v=>v.metodo==='efectivo').length, precio: efectivo, total: efectivo },
+            { nombre: 'Cobros con Tarjeta', cant: ventasHoy.filter(v=>v.metodo==='tarjeta').length, precio: tarjeta, total: tarjeta },
+            { nombre: 'Cobros por Transferencia', cant: ventasHoy.filter(v=>v.metodo==='transferencia').length, precio: transfer, total: transfer }
+          ],
+          subtotal: totalVentas,
+          total: totalVentas,
+          pagoCon: totalVentas,
+          cambio: 0
+        };
+
+        this.mostrarTicket(corte);
+      }
+
+      exportarVentasCSV() {
+        const ventas = JSON.parse(localStorage.getItem('jb_ventas') || '[]');
+        if (ventas.length === 0) {
+          this.mostrarToast("No hay ventas para exportar", "info");
+          return;
+        }
+
+        let csv = "Folio,Fecha,Hora,Cliente,Metodo,Total,Items\n";
+        ventas.forEach(v => {
+          const itemsDesc = v.items.map(i => `${i.cant} ${i.nombre}`).join(' | ').replace(/,/g, ' ');
+          csv += `"${v.folio}","${v.fecha}","${v.hora}","${v.cliente}","${v.metodo}","${v.total.toFixed(2)}","${itemsDesc}"\n`;
+        });
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", `ventas-jymmys-barber-${this.getTodayDate()}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        audioManager.playClick();
+        this.mostrarToast("Reporte descargado en CSV", "success");
+      }
+
+      actualizarBadgeCitas() {
+        const citas = JSON.parse(localStorage.getItem('jb_citas') || '[]');
+        const pendientes = citas.filter(c => c.estado === 'pendiente').length;
+        const badge = document.getElementById('badge-citas-pendientes');
+        if (badge) {
+          if (pendientes > 0) {
+            badge.textContent = pendientes;
+            badge.classList.remove('hidden');
+          } else {
+            badge.classList.add('hidden');
+          }
+        }
+      }
+
+      mostrarToast(mensaje, tipo = "info") {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        const borderColor = tipo === 'success' ? 'border-barber-green text-barber-green' : tipo === 'error' ? 'border-barber-red text-barber-red' : 'border-barber-blue text-barber-blue';
+        const iconName = tipo === 'success' ? 'check-circle' : tipo === 'error' ? 'alert-circle' : 'info';
+
+        toast.className = `p-4 rounded-xl bg-barber-card/95 backdrop-blur-md border ${borderColor} shadow-2xl flex items-center gap-3 text-xs font-semibold transform transition-all duration-300 translate-y-4 opacity-0 pointer-events-auto`;
+        toast.innerHTML = `
+          <i data-lucide="${iconName}" class="w-5 h-5 flex-shrink-0"></i>
+          <span class="text-white">${mensaje}</span>
+        `;
+
+        container.appendChild(toast);
+        lucide.createIcons();
+
+        setTimeout(() => {
+          toast.classList.remove('translate-y-4', 'opacity-0');
+        }, 10);
+
+        setTimeout(() => {
+          toast.classList.add('opacity-0', 'translate-y-2');
+          setTimeout(() => toast.remove(), 300);
+        }, 3500);
+      }
+    }
+
+    const app = new BarberApp();
+  </script>
+</body>
+</html>
